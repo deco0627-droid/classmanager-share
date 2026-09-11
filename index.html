@@ -219,7 +219,9 @@ service cloud.firestore {
     <input id="loginEmail" type="email" placeholder="teacher@school.kr" class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm mb-2">
     <input id="loginPassword" type="password" placeholder="비밀번호" class="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm mb-1">
     <p id="loginError" class="hidden text-xs text-brick mt-2 mb-1">로그인에 실패했습니다. 이메일/비밀번호를 확인해주세요.</p>
+    <p id="loginResetSent" class="hidden text-xs text-forest-dark mt-2 mb-1">비밀번호 재설정 메일을 보냈습니다. 메일함(스팸함 포함)을 확인해주세요.</p>
     <button onclick="loginTeacher()" class="w-full bg-forest text-white py-2.5 rounded-lg text-sm font-semibold hover:bg-forest-dark mt-3">로그인</button>
+    <button onclick="sendTeacherPasswordReset()" class="w-full text-xs text-gray-400 hover:text-forest-dark mt-3">비밀번호를 잊으셨나요?</button>
   </div>
 </div>
 
@@ -2735,9 +2737,21 @@ function loginTeacher(){
   const pw = document.getElementById('loginPassword').value;
   if (!email || !pw) return;
   document.getElementById('loginError').classList.add('hidden');
+  document.getElementById('loginResetSent').classList.add('hidden');
   auth.signInWithEmailAndPassword(email, pw)
     .then(() => { closeLoginModal(); })
     .catch(() => { document.getElementById('loginError').classList.remove('hidden'); });
+}
+// 회원가입 화면이 없어 계정은 콘솔에서 만들지만, 비밀번호를 잊었을 때는 Firebase의
+// 기본 재설정 메일 발송 기능을 그대로 써서 선생님이 스스로 새 비밀번호를 정할 수 있게 한다.
+function sendTeacherPasswordReset(){
+  const email = document.getElementById('loginEmail').value.trim();
+  if (!email) return alert('먼저 이메일을 입력해주세요.');
+  document.getElementById('loginError').classList.add('hidden');
+  document.getElementById('loginResetSent').classList.add('hidden');
+  auth.sendPasswordResetEmail(email)
+    .then(() => { document.getElementById('loginResetSent').classList.remove('hidden'); })
+    .catch(err => alert('재설정 메일 발송에 실패했습니다: ' + err.message));
 }
 function logoutTeacher(){ auth.signOut(); document.getElementById('userPanel').classList.add('hidden'); }
 function renderUserPanel(){
