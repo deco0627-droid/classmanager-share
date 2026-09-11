@@ -1069,15 +1069,16 @@ service cloud.firestore {
             <input id="counselStudentName" placeholder="학생 이름" class="border border-gray-300 rounded-lg px-3 py-2 text-sm">
             <input id="counselParentName" placeholder="학부모 성명" class="border border-gray-300 rounded-lg px-3 py-2 text-sm">
             <input id="counselDate" type="date" class="border border-gray-300 rounded-lg px-3 py-2 text-sm">
-            <input id="counselTime" type="time" class="border border-gray-300 rounded-lg px-3 py-2 text-sm">
+            <input id="counselTime" type="time" value="09:00" class="border border-gray-300 rounded-lg px-3 py-2 text-sm">
             <select id="counselMethod" class="border border-gray-300 rounded-lg px-3 py-2 text-sm">
               <option value="전화">📞 전화상담</option>
               <option value="대면">🤝 대면상담</option>
             </select>
           </div>
           <div class="flex gap-2 mb-3">
-            <input id="counselNotes" placeholder="메모 (선택)" class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm">
-            <button onclick="addCounselingSlot()" class="bg-forest text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-forest-dark shrink-0">추가</button>
+            <input id="counselNotes" placeholder="메모 (선택, 전화번호 입력 시 자동으로 하이픈이 붙어요)" oninput="formatPhoneInput(this)" class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm">
+            <button id="counselSaveBtn" onclick="addCounselingSlot()" class="bg-forest text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-forest-dark shrink-0">추가</button>
+            <button id="counselCancelEditBtn" onclick="cancelCounselingEdit()" class="hidden bg-gray-200 text-gray-600 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-gray-300 shrink-0">취소</button>
           </div>
           <div id="counselingSlotList" class="space-y-3"></div>
         </div>
@@ -1921,6 +1922,8 @@ let settingsCache = defaultSettings();
 let studentsUnsub = null;
 let counselingSlotsCache = [];
 let counselingSlotsUnsub = null;
+let openCounselLogId = null;
+let editingCounselingSlotId = null;
 let customPagesCache = [];
 let certExamsCache = [];
 let weatherCache = null;
@@ -2384,15 +2387,75 @@ function addCounselingSlot(){
   const method = document.getElementById('counselMethod').value;
   const notes = document.getElementById('counselNotes').value.trim();
   if (!studentName || !parentName || !date || !time) return alert('학생 이름·학부모 성명·날짜·시간을 모두 입력해주세요.');
-  classCol('counselingSlots').add({ studentName, parentName, date, time, method, notes, createdAt: Date.now() })
+  const data = { studentName, parentName, date, time, method, notes };
+  const save = editingCounselingSlotId
+    ? classCol('counselingSlots').doc(editingCounselingSlotId).update(data)
+    : classCol('counselingSlots').add({ ...data, createdAt: Date.now() });
+  save
     .then(() => {
-      ['counselStudentName', 'counselParentName', 'counselTime', 'counselNotes'].forEach(id => { document.getElementById(id).value = ''; });
+      ['counselStudentName', 'counselParentName', 'counselNotes'].forEach(id => { document.getElementById(id).value = ''; });
+      document.getElementById('counselTime').value = '09:00';
+      if (editingCounselingSlotId) cancelCounselingEdit(); else document.getElementById('counselDate').focus();
     })
     .catch(err => alert('저장에 실패했습니다: ' + err.message));
 }
+function editCounselingSlot(id){
+  const s = counselingSlotsCache.find(x => x.id === id);
+  if (!s) return;
+  editingCounselingSlotId = id;
+  document.getElementById('counselStudentName').value = s.studentName || '';
+  document.getElementById('counselParentName').value = s.parentName || '';
+  document.getElementById('counselDate').value = s.date || '';
+  document.getElementById('counselTime').value = s.time || '09:00';
+  document.getElementById('counselMethod').value = s.method || '전화';
+  document.getElementById('counselNotes').value = s.notes || '';
+  document.getElementById('counselSaveBtn').textContent = '수정 완료';
+  document.getElementById('counselCancelEditBtn').classList.remove('hidden');
+  document.getElementById('counselStudentName').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+function cancelCounselingEdit(){
+  editingCounselingSlotId = null;
+  ['counselStudentName', 'counselParentName', 'counselDate', 'counselNotes'].forEach(id => { document.getElementById(id).value = ''; });
+  document.getElementById('counselTime').value = '09:00';
+  document.getElementById('counselMethod').value = '전화';
+  document.getElementById('counselSaveBtn').textContent = '추가';
+  document.getElementById('counselCancelEditBtn').classList.add('hidden');
+}
 function deleteCounselingSlot(id){
   if (!confirm('이 상담 일정을 삭제할까요?')) return;
+  if (editingCounselingSlotId === id) cancelCounselingEdit();
+  if (openCounselLogId === id) openCounselLogId = null;
   classCol('counselingSlots').doc(id).delete().catch(err => alert('삭제에 실패했습니다: ' + err.message));
+}
+// 상담 예약할 때 미리 적어두는 "메모"와 달리, 실제로 상담을 하면서/하고 나서 나눈 내용을
+// 남겨두는 기록이다. 한 번에 하나만 펼쳐서 쓰도록 한다(여러 개를 동시에 열면 목록이 산만해짐).
+function toggleCounselingLog(id){
+  openCounselLogId = openCounselLogId === id ? null : id;
+  renderCounselingSlots();
+}
+function saveCounselingLog(id){
+  const input = document.getElementById('counselLogInput_' + id);
+  if (!input) return;
+  const resultNote = input.value.trim();
+  classCol('counselingSlots').doc(id).update({ resultNote, resultNoteUpdatedAt: Date.now() })
+    .then(() => { openCounselLogId = null; renderCounselingSlots(); })
+    .catch(err => alert('저장에 실패했습니다: ' + err.message));
+}
+// 자유 메모 칸이라도 내용 전체가 숫자·하이픈뿐이면(=전화번호를 입력 중이면) 자동으로 하이픈을 넣어준다.
+function formatPhoneInput(el){
+  const raw = el.value;
+  if (!/^[0-9\-\s]*$/.test(raw)) return;
+  const digits = raw.replace(/[^0-9]/g, '').slice(0, 11);
+  let formatted = digits;
+  if (digits.startsWith('02')) {
+    if (digits.length > 9) formatted = `${digits.slice(0,2)}-${digits.slice(2,6)}-${digits.slice(6,10)}`;
+    else if (digits.length > 5) formatted = `${digits.slice(0,2)}-${digits.slice(2,5)}-${digits.slice(5,9)}`;
+    else if (digits.length > 2) formatted = `${digits.slice(0,2)}-${digits.slice(2,5)}`;
+  } else {
+    if (digits.length > 7) formatted = `${digits.slice(0,3)}-${digits.slice(3,7)}-${digits.slice(7,11)}`;
+    else if (digits.length > 3) formatted = `${digits.slice(0,3)}-${digits.slice(3,7)}`;
+  }
+  el.value = formatted;
 }
 // 날짜별로 묶어서 그날 상담이 몇 건인지, 시간 순서대로 한눈에 보이게 한다.
 function renderCounselingSlots(){
@@ -2410,13 +2473,28 @@ function renderCounselingSlots(){
         <p class="text-xs font-bold text-gray-500 mb-1.5">${escapeHtml(date)}(${dow}) · ${slots.length}건</p>
         <div class="space-y-1.5">
           ${slots.map(s => `
-            <div class="flex items-center justify-between border border-gray-200 rounded-lg px-3 py-2 text-sm">
-              <div class="flex items-center gap-2 min-w-0">
-                <span class="font-mono font-bold text-forest-dark shrink-0">${escapeHtml(s.time || '')}</span>
-                <span class="shrink-0 text-xs font-semibold px-1.5 py-0.5 rounded-full ${s.method === '대면' ? 'bg-amber-light text-amber' : 'bg-forest-light text-forest-dark'}">${s.method === '대면' ? '🤝 대면' : '📞 전화'}</span>
-                <span class="truncate">${escapeHtml(s.studentName)} 학생 · 학부모 ${escapeHtml(s.parentName)}${s.notes ? ` · ${escapeHtml(s.notes)}` : ''}</span>
+            <div class="border border-gray-200 rounded-lg px-3 py-2 text-sm">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2 min-w-0">
+                  <span class="font-mono font-bold text-forest-dark shrink-0">${escapeHtml(s.time || '')}</span>
+                  <span class="shrink-0 text-xs font-semibold px-1.5 py-0.5 rounded-full ${s.method === '대면' ? 'bg-amber-light text-amber' : 'bg-forest-light text-forest-dark'}">${s.method === '대면' ? '🤝 대면' : '📞 전화'}</span>
+                  <span class="truncate">${escapeHtml(s.studentName)} 학생 · 학부모 ${escapeHtml(s.parentName)}${s.notes ? ` · ${escapeHtml(s.notes)}` : ''}</span>
+                </div>
+                <div class="flex items-center gap-2 shrink-0 ml-2">
+                  <button onclick="toggleCounselingLog('${s.id}')" class="flex items-center gap-1 text-xs ${s.resultNote ? 'text-forest-dark font-semibold' : 'text-gray-300 hover:text-forest-dark'}"><span class="text-xl leading-none">📝</span>${s.resultNote ? '상담 기록 완료' : '상담 기록'}</button>
+                  <button onclick="editCounselingSlot('${s.id}')" class="text-gray-300 hover:text-forest-dark text-xs">수정</button>
+                  <button onclick="deleteCounselingSlot('${s.id}')" class="text-gray-300 hover:text-brick text-xs">삭제</button>
+                </div>
               </div>
-              <button onclick="deleteCounselingSlot('${s.id}')" class="text-gray-300 hover:text-brick text-xs shrink-0 ml-2">삭제</button>
+              ${openCounselLogId === s.id ? `
+                <div class="mt-2 pt-2 border-t border-gray-100">
+                  <textarea id="counselLogInput_${s.id}" rows="6" placeholder="상담하면서 나눈 내용, 결정된 사항 등을 적어두세요." class="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm">${escapeHtml(s.resultNote || '')}</textarea>
+                  <div class="flex gap-2 mt-1.5">
+                    <button onclick="saveCounselingLog('${s.id}')" class="text-xs bg-forest text-white px-3 py-1 rounded-full hover:bg-forest-dark">저장</button>
+                    <button onclick="toggleCounselingLog('${s.id}')" class="text-xs border border-gray-300 px-3 py-1 rounded-full hover:bg-gray-50">닫기</button>
+                  </div>
+                </div>
+              ` : (s.resultNote ? `<p class="text-xs text-gray-500 mt-1.5 whitespace-pre-line">📝 ${escapeHtml(s.resultNote)}</p>` : '')}
             </div>`).join('')}
         </div>
       </div>`;
