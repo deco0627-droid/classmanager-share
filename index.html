@@ -2138,9 +2138,12 @@ function continueBootstrapApp(){
     maybeShowNoticePopup();
     backfillTodayNoticeTimestamps();
   });
+  // 새로 만든 반은 아직 이 반 선생님이 한 번도 로그인 안 해서 settings 문서가 없을 수 있는데,
+  // 그 상태에서 방문자(비로그인)가 먼저 열면 이 문서 생성 자체가 보안 규칙상 막혀 있어 실패한다
+  // (문서가 없어도 settingsCache가 기본값으로 대체되니 기능상 문제는 없다 — 조용히 무시한다).
   classCol('settings').doc('general').get().then(doc => {
-    if (!doc.exists) classCol('settings').doc('general').set(defaultSettings());
-  });
+    if (!doc.exists) classCol('settings').doc('general').set(defaultSettings()).catch(() => {});
+  }).catch(() => {});
   let lastWeatherLocKey = null;
   let lastMealSchoolKey = null;
   classCol('settings').doc('general').onSnapshot(doc => {
