@@ -364,26 +364,6 @@ service cloud.firestore {
     </div>
 
     <div class="bg-card border border-gray-200 rounded-xl p-3 mb-5 flex flex-col sm:flex-row sm:items-center gap-3">
-      <div class="flex items-center gap-3 min-w-0">
-        <svg width="44" height="44" viewBox="0 0 100 100" class="shrink-0 rounded-full bg-white border border-gray-200">
-          <circle cx="50" cy="52" r="34" fill="#F8F1E4"/>
-          <path d="M20 40 Q18 18 45 15 Q75 12 78 38 Q80 44 74 42 Q72 30 65 26 Q68 34 64 40 Q58 24 46 24 Q30 24 26 42 Q22 44 20 40Z" fill="#2A2A2A"/>
-          <circle cx="50" cy="55" r="30" fill="none" stroke="#2A2A2A" stroke-width="2.5"/>
-          <rect x="27" y="46" width="17" height="14" rx="3" fill="none" stroke="#2A2A2A" stroke-width="2.8"/>
-          <rect x="56" y="46" width="17" height="14" rx="3" fill="none" stroke="#2A2A2A" stroke-width="2.8"/>
-          <line x1="44" y1="53" x2="56" y2="53" stroke="#2A2A2A" stroke-width="2.8"/>
-          <circle cx="35" cy="53" r="2.6" fill="#2A2A2A"/>
-          <circle cx="64" cy="53" r="2.6" fill="#2A2A2A"/>
-          <path d="M38 68 Q50 76 62 68" fill="none" stroke="#2A2A2A" stroke-width="2.8" stroke-linecap="round"/>
-          <path d="M28 82 Q50 92 72 82 L72 100 L28 100Z" fill="#2A2A2A"/>
-        </svg>
-        <div class="flex-1 min-w-0">
-          <p class="text-xs font-semibold text-forest-dark truncate" id="dashBlogName">배움꿈나무 선생님</p>
-          <p class="text-[11px] text-gray-400 truncate" id="dashBlogDesc">학급 소식 외에 더 많은 이야기가 궁금하다면?</p>
-        </div>
-        <button id="dashBlogEditBtn" onclick="switchView('admin')" class="hidden text-gray-300 hover:text-forest-dark text-sm shrink-0" title="이 배지 수정하기">✏️</button>
-      </div>
-      <div id="dashBadgeLinks" class="flex items-center gap-2 flex-wrap sm:justify-end sm:ml-auto"></div>
       <div class="flex items-center justify-end gap-2 shrink-0 sm:ml-auto">
         <div class="relative">
           <button id="pageFontBtn" class="flex items-center justify-center w-8 h-8 rounded-full bg-forest-light text-forest-dark hover:opacity-80 transition text-sm font-bold" title="이 페이지 글자 크기 · 간격">가</button>
@@ -1200,58 +1180,6 @@ service cloud.firestore {
         </div>
         </div>
       </div>
-      <div class="bg-card border border-gray-200 rounded-xl p-5" data-admin-card="blogBadge">
-        <button id="adminCollapseBtn_blogBadge" onclick="toggleAdminCollapse('blogBadge')" aria-expanded="false" class="admin-collapse-btn">
-          <h2 class="font-display text-lg text-forest-dark">✍️ 블로그·유튜브 소개 문구</h2>
-          <span class="admin-collapse-chevron">▶</span>
-        </button>
-        <div id="adminCollapseBody_blogBadge" class="hidden mt-3">
-        <p class="text-xs text-gray-500 mb-3">대시보드 상단에 보이는 이름·문구·링크를 자유롭게 수정할 수 있어요.</p>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2">
-          <div>
-            <label class="text-xs font-semibold text-gray-500">이름</label>
-            <input id="blogNameField" class="w-full mt-1 border border-gray-300 rounded-lg px-3 py-2 text-sm">
-          </div>
-          <div>
-            <label class="text-xs font-semibold text-gray-500">소개 문구</label>
-            <input id="blogDescField" class="w-full mt-1 border border-gray-300 rounded-lg px-3 py-2 text-sm">
-          </div>
-        </div>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2">
-          <div>
-            <label class="text-xs font-semibold text-gray-500">블로그 버튼 문구</label>
-            <input id="blogLabelField" class="w-full mt-1 border border-gray-300 rounded-lg px-3 py-2 text-sm">
-          </div>
-          <div>
-            <label class="text-xs font-semibold text-gray-500">블로그 주소</label>
-            <input id="blogUrlField" class="w-full mt-1 border border-gray-300 rounded-lg px-3 py-2 text-sm">
-          </div>
-        </div>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
-          <div>
-            <label class="text-xs font-semibold text-gray-500">유튜브 버튼 문구</label>
-            <input id="youtubeLabelField" class="w-full mt-1 border border-gray-300 rounded-lg px-3 py-2 text-sm">
-          </div>
-          <div>
-            <label class="text-xs font-semibold text-gray-500">유튜브 주소</label>
-            <input id="youtubeUrlField" class="w-full mt-1 border border-gray-300 rounded-lg px-3 py-2 text-sm">
-          </div>
-        </div>
-        <div class="mt-4 pt-4 border-t border-gray-200">
-          <label class="text-xs font-semibold text-gray-500">추가 버튼</label>
-          <p class="text-[11px] text-gray-400 mb-2">블로그·유튜브 외에 더 자주 쓰는 링크를 자유롭게 추가할 수 있어요. 이름을 적으면 어울리는 아이콘이 자동으로 붙고, 마음에 안 들면 아이콘을 눌러 다른 걸로 바꿀 수 있어요.</p>
-          <div class="flex flex-wrap items-center gap-2 mb-2 relative">
-            <button type="button" id="extraBadgeIconBtn" onclick="toggleExtraBadgeIconPicker()" class="w-10 h-10 shrink-0 border border-gray-300 rounded-lg text-lg hover:bg-gray-50" title="아이콘 직접 고르기">🔗</button>
-            <input id="extraBadgeLabel" oninput="updateExtraBadgeIconPreview()" placeholder="버튼 이름 (예: 인스타)" class="flex-1 min-w-[7rem] border border-gray-300 rounded-lg px-3 py-2 text-sm">
-            <input id="extraBadgeUrl" placeholder="https://..." class="flex-1 min-w-[9rem] border border-gray-300 rounded-lg px-3 py-2 text-sm">
-            <button onclick="addExtraBadgeLink()" class="bg-amber text-white px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 shrink-0">추가</button>
-            <div id="extraBadgeIconPicker" class="hidden absolute top-12 left-0 z-10 bg-paper border border-gray-200 rounded-xl shadow-lg p-2 grid grid-cols-6 gap-1 w-56"></div>
-          </div>
-          <div id="extraBadgeLinkList" class="space-y-1"></div>
-        </div>
-        <button onclick="saveBlogBadge()" class="mt-4 bg-forest text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-forest-dark">저장</button>
-        </div>
-      </div>
       <div class="bg-card border border-gray-200 rounded-xl p-5" data-admin-card="weatherLocation">
         <button id="adminCollapseBtn_weatherLocation" onclick="toggleAdminCollapse('weatherLocation')" aria-expanded="false" class="admin-collapse-btn">
           <h2 class="font-display text-lg text-forest-dark">🌤 날씨 위치 설정</h2>
@@ -1968,15 +1896,6 @@ function defaultSettings(){
     navLabels: {},
     wallColumns: ['자유게시판'],
     mealSchool: null,
-    blogBadge: {
-      name: '배움꿈나무 선생님',
-      desc: '학급 소식 외에 더 많은 이야기가 궁금하다면?',
-      blogUrl: 'https://blog.naver.com/kook_25',
-      blogLabel: '📝 블로그',
-      youtubeUrl: 'https://www.youtube.com/@deco0627',
-      youtubeLabel: '▶️ 유튜브',
-      links: [],
-    },
   };
 }
 
@@ -2293,7 +2212,6 @@ function continueBootstrapApp(){
     document.getElementById('cleaningPhotoUploadLabel').classList.toggle('hidden', !isTeacher);
     document.getElementById('clubPhotoUploadLabel').classList.toggle('hidden', !isTeacher);
     syncAssignmentPhotoButtons();
-    document.getElementById('dashBlogEditBtn').classList.toggle('hidden', !isTeacher);
     if (isTeacher) { startStudentsListener(); startWallPrivateListener(); startCounselingSlotsListener(); } else { stopStudentsListener(); stopWallPrivateListener(); stopCounselingSlotsListener(); }
     const onPrivateCustom = currentView.startsWith('custom_') && (() => {
       const p = customPagesCache.find(x => 'custom_'+x.id === currentView);
@@ -3262,20 +3180,6 @@ function renderDashboard(){
   document.getElementById('dashVisitToday').textContent = statsCache.dailyDate === todayStr2 ? statsCache.dailyCount : 0;
   document.getElementById('dashVisitTotal').textContent = statsCache.total || 0;
   renderLunchWidget();
-
-  const bb = settingsCache.blogBadge || defaultSettings().blogBadge;
-  document.getElementById('dashBlogName').textContent = bb.name;
-  document.getElementById('dashBlogDesc').textContent = bb.desc;
-  const extraLinks = bb.links || [];
-  const primaryLinks = [
-    { label: '📝 CBT 자격증 학습', url: 'https://cbt-program.pages.dev/' },
-    { label: bb.blogLabel, url: bb.blogUrl },
-    { label: bb.youtubeLabel, url: bb.youtubeUrl },
-    ...extraLinks,
-  ].filter(link => link && link.label && link.url);
-  document.getElementById('dashBadgeLinks').innerHTML = primaryLinks.map(link => `
-    <a href="${escapeAttr(link.url)}" target="_blank" class="text-xs rounded-full px-3 py-1.5 hover:opacity-80 shrink-0 ${link.label.includes('유튜브') ? 'bg-brick-light text-brick' : link.label.includes('블로그') ? 'bg-forest-light text-forest-dark' : link.label.includes('CBT') ? 'bg-amber-light text-amber' : 'bg-card border border-gray-200'}">${escapeHtml(link.label)}</a>
-  `).join('');
 }
 
 /* ============================================================
@@ -6246,7 +6150,6 @@ const ADMIN_CARD_LABELS = {
   navOrder: '🧭 메뉴 순서 편집',
   wallColumns: '🧱 담벼락 게시판 관리',
   classInfo: '🏷 학급 기본 정보',
-  blogBadge: '✍️ 블로그·유튜브 소개 문구',
   weatherLocation: '🌤 날씨 위치 설정',
   mealSchool: '🍱 점심메뉴 학교 설정',
   customPages: '➕ 메뉴탭 직접 추가',
@@ -6586,20 +6489,6 @@ function renderAdmin(){
       <button onclick="removeWallColumn(${i})" class="text-forest-dark/50 hover:text-brick ml-0.5">&times;</button>
     </span>`;
   }).join('') || `<p class="text-gray-400 text-xs">게시판이 없습니다. 하나 이상 추가해주세요.</p>`;
-  const bb = settingsCache.blogBadge || defaultSettings().blogBadge;
-  document.getElementById('blogNameField').value = bb.name;
-  document.getElementById('blogDescField').value = bb.desc;
-  document.getElementById('blogLabelField').value = bb.blogLabel;
-  document.getElementById('blogUrlField').value = bb.blogUrl;
-  document.getElementById('youtubeLabelField').value = bb.youtubeLabel;
-  document.getElementById('youtubeUrlField').value = bb.youtubeUrl;
-  document.getElementById('extraBadgeLinkList').innerHTML = (bb.links || []).length
-    ? (bb.links || []).map((link,i) => `
-      <div class="flex items-center justify-between bg-card border border-gray-200 rounded-lg px-2 py-1.5 text-xs">
-        <span>${escapeHtml(link.label)} <span class="text-gray-400">— ${escapeHtml(link.url)}</span></span>
-        <button onclick="removeExtraBadgeLink(${i})" class="text-gray-300 hover:text-brick text-base leading-none shrink-0 ml-2">&times;</button>
-      </div>`).join('')
-    : '<p class="text-gray-400 text-xs">추가된 버튼이 없습니다.</p>';
   document.getElementById('weatherCurrentLocation').textContent = settingsCache.weatherLocation?.name || '서울(기본값)';
   document.getElementById('weatherNameField').value = settingsCache.weatherLocation?.name || '';
   document.getElementById('weatherLatField').value = settingsCache.weatherLocation?.lat ?? '';
@@ -6672,99 +6561,6 @@ function saveHealthRecoveryEmail(){
   settingsCache.healthRecoveryEmail = value || (TEACHER_EMAIL || '');
   classCol('settings').doc('general').set({ healthRecoveryEmail: settingsCache.healthRecoveryEmail }, { merge: true });
   alert('복구용 이메일이 저장되었습니다.');
-}
-function saveBlogBadge(){
-  settingsCache.blogBadge = {
-    ...(settingsCache.blogBadge || {}),
-    name: document.getElementById('blogNameField').value.trim(),
-    desc: document.getElementById('blogDescField').value.trim(),
-    blogLabel: document.getElementById('blogLabelField').value.trim(),
-    blogUrl: document.getElementById('blogUrlField').value.trim(),
-    youtubeLabel: document.getElementById('youtubeLabelField').value.trim(),
-    youtubeUrl: document.getElementById('youtubeUrlField').value.trim(),
-    links: (settingsCache.blogBadge && settingsCache.blogBadge.links) || [],
-  };
-  classCol('settings').doc('general').set({ blogBadge: settingsCache.blogBadge }, { merge: true });
-  alert('저장되었습니다.');
-}
-// 버튼 이름에 서비스 이름이 들어있으면 어울리는 이모지를 자동으로 골라준다.
-// 마음에 안 들면 아이콘 버튼을 눌러 LINK_ICON_PICKER_OPTIONS 중에서 직접 고를 수 있다.
-const LINK_ICON_KEYWORDS = [
-  { kws: ['유튜브', 'youtube'], icon: '▶️' },
-  { kws: ['인스타', 'instagram'], icon: '📸' },
-  { kws: ['블로그', 'blog'], icon: '✍️' },
-  { kws: ['카카오', 'kakao', '카톡'], icon: '💬' },
-  { kws: ['밴드', 'band'], icon: '👥' },
-  { kws: ['페이스북', 'facebook', '페북'], icon: '📘' },
-  { kws: ['네이버', 'naver'], icon: '🟢' },
-  { kws: ['카페', 'cafe'], icon: '☕' },
-  { kws: ['틱톡', 'tiktok'], icon: '🎵' },
-  { kws: ['트위터', 'twitter'], icon: '🐦' },
-  { kws: ['디스코드', 'discord'], icon: '🎮' },
-  { kws: ['줌', 'zoom'], icon: '🎦' },
-  { kws: ['홈페이지', '학교', 'school'], icon: '🏫' },
-  { kws: ['클래스', 'class', 'e학습터', 'ebs'], icon: '💻' },
-  { kws: ['설문', '구글폼', 'form'], icon: '📋' },
-  { kws: ['상담'], icon: '🗨️' },
-  { kws: ['챗gpt', 'chatgpt', 'ai'], icon: '🤖' },
-  { kws: ['자격증', 'cbt', '시험'], icon: '📝' },
-  { kws: ['지도', 'map'], icon: '🗺️' },
-  { kws: ['일정', 'calendar', '캘린더'], icon: '📅' },
-  { kws: ['사진', 'photo', '갤러리'], icon: '🖼️' },
-];
-const LINK_ICON_PICKER_OPTIONS = ['🔗','📝','✍️','▶️','📸','💬','👥','📘','🟢','☕','🎵','🐦','🎮','🎦','🏫','💻','📋','🗨️','🤖','🗺️','📅','🖼️','⭐','📌'];
-function guessLinkIcon(text){
-  const t = (text || '').toLowerCase();
-  const hit = LINK_ICON_KEYWORDS.find(({ kws }) => kws.some(k => t.includes(k.toLowerCase())));
-  return hit ? hit.icon : '🔗';
-}
-let extraBadgeIconOverride = null; // null이면 자동 추천, 값이 있으면 사용자가 직접 고른 것
-function updateExtraBadgeIconPreview(){
-  if (extraBadgeIconOverride) return;
-  document.getElementById('extraBadgeIconBtn').textContent = guessLinkIcon(document.getElementById('extraBadgeLabel').value);
-}
-function toggleExtraBadgeIconPicker(){
-  const picker = document.getElementById('extraBadgeIconPicker');
-  if (!picker.dataset.rendered) {
-    picker.innerHTML = LINK_ICON_PICKER_OPTIONS.map(icon => `<button type="button" onclick="pickExtraBadgeIcon('${icon}')" class="text-lg hover:bg-gray-100 rounded p-1">${icon}</button>`).join('');
-    picker.dataset.rendered = '1';
-  }
-  picker.classList.toggle('hidden');
-}
-function pickExtraBadgeIcon(icon){
-  extraBadgeIconOverride = icon;
-  document.getElementById('extraBadgeIconBtn').textContent = icon;
-  document.getElementById('extraBadgeIconPicker').classList.add('hidden');
-}
-document.addEventListener('click', (e) => {
-  const picker = document.getElementById('extraBadgeIconPicker');
-  const btn = document.getElementById('extraBadgeIconBtn');
-  if (picker && !picker.classList.contains('hidden') && !picker.contains(e.target) && e.target !== btn) {
-    picker.classList.add('hidden');
-  }
-});
-function addExtraBadgeLink(){
-  const rawLabel = document.getElementById('extraBadgeLabel').value.trim();
-  const url = document.getElementById('extraBadgeUrl').value.trim();
-  if (!rawLabel || !url) return alert('버튼 이름과 링크 주소를 모두 입력해주세요.');
-  const icon = extraBadgeIconOverride || guessLinkIcon(rawLabel);
-  const label = `${icon} ${rawLabel}`;
-  settingsCache.blogBadge = settingsCache.blogBadge || defaultSettings().blogBadge;
-  settingsCache.blogBadge.links = settingsCache.blogBadge.links || [];
-  settingsCache.blogBadge.links.push({ label, url });
-  document.getElementById('extraBadgeLabel').value = '';
-  document.getElementById('extraBadgeUrl').value = '';
-  extraBadgeIconOverride = null;
-  document.getElementById('extraBadgeIconBtn').textContent = '🔗';
-  renderAdmin();
-  classCol('settings').doc('general').set({ blogBadge: settingsCache.blogBadge }, { merge: true });
-}
-function removeExtraBadgeLink(i){
-  settingsCache.blogBadge = settingsCache.blogBadge || defaultSettings().blogBadge;
-  settingsCache.blogBadge.links = settingsCache.blogBadge.links || [];
-  settingsCache.blogBadge.links.splice(i,1);
-  renderAdmin();
-  classCol('settings').doc('general').set({ blogBadge: settingsCache.blogBadge }, { merge: true });
 }
 function addCertTypeAdmin(){
   const val = document.getElementById('newCertTypeAdmin').value.trim();
