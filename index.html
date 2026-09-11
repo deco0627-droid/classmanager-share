@@ -2740,7 +2740,11 @@ function loginTeacher(){
   document.getElementById('loginResetSent').classList.add('hidden');
   auth.signInWithEmailAndPassword(email, pw)
     .then(() => { closeLoginModal(); })
-    .catch(() => { document.getElementById('loginError').classList.remove('hidden'); });
+    .catch(err => {
+      const el = document.getElementById('loginError');
+      el.textContent = '로그인에 실패했습니다: ' + (err.message || err.code || '알 수 없는 오류');
+      el.classList.remove('hidden');
+    });
 }
 // 회원가입 화면이 없어 계정은 콘솔에서 만들지만, 비밀번호를 잊었을 때는 Firebase의
 // 기본 재설정 메일 발송 기능을 그대로 써서 선생님이 스스로 새 비밀번호를 정할 수 있게 한다.
