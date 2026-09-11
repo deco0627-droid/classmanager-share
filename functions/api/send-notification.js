@@ -79,6 +79,12 @@ export async function onRequestPost(context) {
     const body = await request.json();
     const title = (body.title || '').toString().slice(0, 200);
     const message = (body.body || '').toString().slice(0, 500);
+    // 반마다 등록 기기가 따로 있어서, 어느 반에 보낼지 classId로 구분한다
+    // (index.html의 classCol('fcmTokens')와 같은 경로를 가리켜야 한다).
+    const classId = (body.classId || '').toString();
+    if (!/^[A-Za-z0-9_-]{1,100}$/.test(classId)) {
+      return new Response(JSON.stringify({ error: '올바르지 않은 classId입니다.' }), { status: 400 });
+    }
     if (!title) {
       return new Response(JSON.stringify({ error: '제목이 없습니다.' }), { status: 400 });
     }
@@ -90,10 +96,11 @@ export async function onRequestPost(context) {
     const serviceAccount = JSON.parse(saJson);
     const projectId = serviceAccount.project_id;
     const accessToken = await getAccessToken(serviceAccount);
+    const fcmTokensPath = `projects/${projectId}/databases/(default)/documents/classes/${classId}/fcmTokens`;
 
-    // fcmTokens 컬렉션의 등록된 기기 토큰을 전부 가져온다.
+    // 이 반의 fcmTokens 컬렉션에 등록된 기기 토큰을 전부 가져온다.
     const listRes = await fetch(
-      `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/fcmTokens?pageSize=1000`,
+      `https://firestore.googleapis.com/v1/${fcmTokensPath}?pageSize=1000`,
       { headers: { Authorization: `Bearer ${accessToken}` } }
     );
     const listData = await listRes.json();
@@ -143,7 +150,7 @@ export async function onRequestPost(context) {
 
     for (const token of invalidTokens) {
       await fetch(
-        `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/fcmTokens/${token}`,
+        `https://firestore.googleapis.com/v1/${fcmTokensPath}/${token}`,
         { method: 'DELETE', headers: { Authorization: `Bearer ${accessToken}` } }
       ).catch(() => {});
     }

@@ -1,24 +1,39 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    function isTeacher() {
+    // edu.jkjin@gmail.com은 반 담당 여부와 상관없이 모든 반의 교사 권한을 갖는
+    // 최상위 관리자다 (index.html의 SUPER_ADMIN_EMAIL과 반드시 같은 값이어야 함).
+    function isSuperAdmin() {
       return request.auth != null && request.auth.token.email == "edu.jkjin@gmail.com";
     }
-    match /schedules/{doc}      { allow read: if true; allow write: if isTeacher(); }
-    match /notices/{doc}        { allow read: if true; allow write: if isTeacher(); }
-    match /settings/{doc}       { allow read: if true; allow write: if isTeacher(); }
-    match /students/{doc}       { allow read, write: if isTeacher(); }
-    match /customPages/{doc}    { allow read: if true; allow write: if isTeacher(); }
-    match /certExams/{doc}      { allow read: if true; allow write: if isTeacher(); }
-    match /tasks/{doc}          { allow read, write: if true; }
-    match /stats/{doc}          { allow read: if true; allow write: if true; }
-    match /visitLog/{doc}       { allow read, write: if true; }
-    match /wallPosts/{doc}      { allow read: if resource.data.isPrivate == false || isTeacher(); allow create: if request.auth != null; allow update, delete: if isTeacher() || (request.auth != null && request.auth.token.email == resource.data.authorEmail); }
-    match /attendance/{doc}     { allow read, create: if true; allow update, delete: if isTeacher(); }
-    match /fcmTokens/{doc}      { allow read: if isTeacher(); allow write: if true; }
-    match /tetrisScores/{doc}   { allow read, create: if true; allow update, delete: if isTeacher(); }
-    match /counselingSlots/{doc} { allow read, write: if isTeacher(); }
-    match /liveNotes/{doc}      { allow read, write: if isTeacher(); }
-    match /classes/{classId=**} { allow read: if true; allow write: if isTeacher(); }
+    // 반마다 담당 선생님이 다르므로, classes/{classId} 문서의 teacherEmail 필드를 그때그때
+    // 읽어서 확인한다 (get()은 이 규칙 하나당 Firestore 읽기 1회로 계산됨).
+    function classTeacherEmail(classId) {
+      return get(/databases/$(database)/documents/classes/$(classId)).data.teacherEmail;
+    }
+    function isClassTeacher(classId) {
+      return isSuperAdmin() || (request.auth != null && request.auth.token.email == classTeacherEmail(classId));
+    }
+
+    // 반 목록 문서 자체(이름/담당 이메일/geofence 등)는 앱 콘솔에서만 만들고 바꾼다.
+    match /classes/{classId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    match /classes/{classId}/schedules/{doc}      { allow read: if true; allow write: if isClassTeacher(classId); }
+    match /classes/{classId}/notices/{doc}        { allow read: if true; allow write: if isClassTeacher(classId); }
+    match /classes/{classId}/settings/{doc}       { allow read: if true; allow write: if isClassTeacher(classId); }
+    match /classes/{classId}/students/{doc}       { allow read, write: if isClassTeacher(classId); }
+    match /classes/{classId}/customPages/{doc}    { allow read: if true; allow write: if isClassTeacher(classId); }
+    match /classes/{classId}/certExams/{doc}      { allow read: if true; allow write: if isClassTeacher(classId); }
+    match /classes/{classId}/stats/{doc}          { allow read: if true; allow write: if true; }
+    match /classes/{classId}/visitLog/{doc}       { allow read, write: if true; }
+    match /classes/{classId}/wallPosts/{doc}      { allow read: if resource.data.isPrivate == false || isClassTeacher(classId); allow create: if request.auth != null; allow update, delete: if isClassTeacher(classId) || (request.auth != null && request.auth.token.email == resource.data.authorEmail); }
+    match /classes/{classId}/attendance/{doc}     { allow read, create: if true; allow update, delete: if isClassTeacher(classId); }
+    match /classes/{classId}/fcmTokens/{doc}      { allow read: if isClassTeacher(classId); allow write: if true; }
+    match /classes/{classId}/tetrisScores/{doc}   { allow read, create: if true; allow update, delete: if isClassTeacher(classId); }
+    match /classes/{classId}/counselingSlots/{doc} { allow read, write: if isClassTeacher(classId); }
+    match /classes/{classId}/liveNotes/{doc}      { allow read, write: if isClassTeacher(classId); }
   }
 }

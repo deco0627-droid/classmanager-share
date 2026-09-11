@@ -1011,15 +1011,6 @@ service cloud.firestore {
           <div id="attendanceTodayList" class="mt-2 text-sm"></div>
         </div>
       </div>
-      <div class="bg-card border border-gray-200 rounded-xl p-5" data-admin-card="taskChecklist">
-        <h2 class="font-display text-lg mb-2 text-forest-dark">📋 학급 업무 체크리스트</h2>
-        <p class="text-xs text-gray-500 mb-3">학급 운영에 필요한 할 일을 적어두고 체크해가며 관리하세요. 교사만 볼 수 있어요.</p>
-        <div class="flex gap-2 mb-3">
-          <input id="newTaskInput" placeholder="할 일을 입력하세요" class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm" onkeydown="if(event.key==='Enter') addTask()">
-          <button onclick="addTask()" class="bg-forest text-white px-4 rounded-lg text-sm font-semibold hover:bg-forest-dark">추가</button>
-        </div>
-        <div id="taskChecklistList" class="space-y-1.5 text-sm max-h-[320px] overflow-y-auto pr-1"></div>
-      </div>
       <div class="bg-card border border-gray-200 rounded-xl p-5 lg:col-span-2" data-admin-card="certRoadmap">
         <button id="adminCollapseBtn_certRoadmap" onclick="toggleAdminCollapse('certRoadmap')" aria-expanded="false" class="admin-collapse-btn">
           <h2 class="font-display text-lg text-forest-dark">🏅 자격증 안내 로드맵 편집</h2>
@@ -1467,17 +1458,25 @@ const firebaseConfig = {
   appId: "1:1025421381572:web:26c8dd7500d160900b5e91"
 };
 
-const TEACHER_EMAIL = "edu.jkjin@gmail.com"; // Firestore 보안 규칙의 이메일과 반드시 동일해야 합니다
+// 반마다 담당 선생님이 다르므로, classes/{classId} 문서의 teacherEmail을 읽어서 정한다
+// (아래 DEFAULT_TEACHER_EMAIL은 그 문서가 없을 때만 쓰는 대비값). Firestore 보안 규칙도
+// 같은 방식(반 문서의 teacherEmail)으로 확인하니, 여기서 값을 바꿔도 규칙은 따로 안 바꿔도 됩니다.
+const DEFAULT_TEACHER_EMAIL = "edu.jkjin@gmail.com";
+let TEACHER_EMAIL = DEFAULT_TEACHER_EMAIL;
 
 /* 여러 반이 이 앱 하나를 함께 쓴다 — URL의 ?class=반ID 로 어느 반인지 정하고,
    생략하면 원래 있던 반(DEFAULT_CLASS_ID)을 보여준다. 로그인 후에도 이 값은
    바꾸지 않는다(다른 반 데이터가 잠깐 섞여 보이는 걸 막기 위해) — 대신
    로그인한 선생님이 이 반 담당이 아니면 본인 반 주소로 안내한다. */
-const DEFAULT_CLASS_ID = "yuhan-1";
+const DEFAULT_CLASS_ID = "class1";
 const currentClassId = new URLSearchParams(location.search).get('class') || DEFAULT_CLASS_ID;
 let currentClassDoc = {};
 function classCol(name){ return db.collection('classes').doc(currentClassId).collection(name); }
 function currentGeofence(){ return currentClassDoc.geofence || SCHOOL_GEOFENCE; }
+// 이 이메일은 반 담당 여부와 상관없이 모든 반에 교사 권한을 갖는 최상위 관리자다
+// (Firestore 보안 규칙의 isClassTeacher()도 이 이메일을 항상 허용하니, 여기서 바꾸면
+// 규칙도 같이 바꿔줘야 한다).
+const SUPER_ADMIN_EMAIL = "edu.jkjin@gmail.com";
 
 /* 푸시 알림(공지 올리면 휴대폰 알림)을 쓰려면 Firebase 콘솔 > 프로젝트 설정 > Cloud Messaging
    탭에서 "웹 푸시 인증서"를 만들고, 거기 나오는 키 문자열을 아래에 붙여넣으세요.
@@ -1557,7 +1556,7 @@ function handleCleaningPhotoUpload(e){
   const file = e.target.files[0]; if (!file) return;
   compressImageFile(file, 1200, 0.7).then(dataUrl => {
     if (dataUrl.length > 900000) return alert('이미지 용량이 너무 큽니다. 더 작거나 단순한 사진으로 다시 시도해주세요.');
-    db.collection('settings').doc('cleaningPhoto').set({ data: dataUrl });
+    classCol('settings').doc('cleaningPhoto').set({ data: dataUrl });
     cleaningPhotoCache = dataUrl;
     syncAssignmentPhotoButtons();
     renderPhotosView();
@@ -1567,7 +1566,7 @@ function handleClubPhotoUpload(e){
   const file = e.target.files[0]; if (!file) return;
   compressImageFile(file, 1200, 0.7).then(dataUrl => {
     if (dataUrl.length > 900000) return alert('이미지 용량이 너무 큽니다. 더 작거나 단순한 사진으로 다시 시도해주세요.');
-    db.collection('settings').doc('clubPhoto').set({ data: dataUrl });
+    classCol('settings').doc('clubPhoto').set({ data: dataUrl });
     clubPhotoCache = dataUrl;
     syncAssignmentPhotoButtons();
     renderPhotosView();
@@ -1673,7 +1672,7 @@ function deleteAssignmentPhoto(kind){
   const photoCacheKey = kind === 'cleaning' ? 'cleaningPhotoCache' : 'clubPhotoCache';
   if (!confirm('업로드한 사진을 삭제하시겠습니까?')) return;
   if (window.db) {
-    db.collection('settings').doc(key).delete().catch(() => {});
+    classCol('settings').doc(key).delete().catch(() => {});
   }
   if (photoCacheKey === 'cleaningPhotoCache') cleaningPhotoCache = null;
   if (photoCacheKey === 'clubPhotoCache') clubPhotoCache = null;
@@ -1826,7 +1825,7 @@ function renderWall(){
 }
 function toggleWallPin(id, current){
   if (!isTeacher) return;
-  db.collection('wallPosts').doc(id).set({ pinned: !current }, { merge: true })
+  classCol('wallPosts').doc(id).set({ pinned: !current }, { merge: true })
     .catch(() => alert('고정 처리 중 문제가 발생했습니다.'));
 }
 let editingWallPostId = null;
@@ -1835,7 +1834,7 @@ function cancelEditWallPost(){ editingWallPostId = null; renderWall(); }
 function saveEditWallPost(id){
   const content = document.getElementById('editWallContent_'+id).value.trim();
   if (!content) return alert('내용을 입력해주세요.');
-  db.collection('wallPosts').doc(id).set({ content }, { merge: true })
+  classCol('wallPosts').doc(id).set({ content }, { merge: true })
     .then(() => { editingWallPostId = null; })
     .catch(() => alert('수정 중 문제가 발생했습니다.'));
 }
@@ -1890,7 +1889,7 @@ function submitWallPost(){
   const content = document.getElementById('wallPostContent').value.trim();
   if (!content) return alert('내용을 입력해주세요.');
   const isPrivate = document.getElementById('wallPostPrivate').checked;
-  db.collection('wallPosts').add({
+  classCol('wallPosts').add({
     column: wallPostTargetColumn, author: user.displayName || user.email, authorEmail: user.email,
     content, image: wallPostImageData || null, createdAt: Date.now(), isPrivate,
   }).then(() => closeWallPostForm())
@@ -1898,7 +1897,7 @@ function submitWallPost(){
 }
 function deleteWallPost(id){
   if (!confirm('이 게시물을 삭제하시겠습니까?')) return;
-  db.collection('wallPosts').doc(id).delete()
+  classCol('wallPosts').doc(id).delete()
     .catch(() => alert('삭제 권한이 없거나 문제가 발생했습니다.'));
 }
 
@@ -2003,7 +2002,6 @@ let counselingSlotsCache = [];
 let counselingSlotsUnsub = null;
 let customPagesCache = [];
 let certExamsCache = [];
-let tasksCache = [];
 let weatherCache = null;
 let lunchMenuCache = null;
 let weeklyWeatherCache = [];
@@ -2070,7 +2068,7 @@ function registerFcmToken(registration){
     if (!token) return;
     currentFcmToken = token;
     const name = ensureStudentNameForPush();
-    db.collection('fcmTokens').doc(token).set({ token, name, updatedAt: Date.now() }, { merge: true });
+    classCol('fcmTokens').doc(token).set({ token, name, updatedAt: Date.now() }, { merge: true });
   }).catch(err => console.error('FCM 토큰 발급 실패:', err));
 }
 
@@ -2129,7 +2127,7 @@ function editPushStudentName(){
   const input = (prompt('실명을 띄어쓰기 없이 입력해주세요 (예: 홍길동)', current) || '').replace(/\s+/g, '');
   if (!input) return;
   localStorage.setItem(PUSH_STUDENT_NAME_KEY, input);
-  if (currentFcmToken) db.collection('fcmTokens').doc(currentFcmToken).set({ name: input }, { merge: true }).catch(() => {});
+  if (currentFcmToken) classCol('fcmTokens').doc(currentFcmToken).set({ name: input }, { merge: true }).catch(() => {});
   renderPushSettingsModal();
 }
 function disablePushNotifications(){
@@ -2137,7 +2135,7 @@ function disablePushNotifications(){
   const token = currentFcmToken;
   currentFcmToken = null;
   if (fcmMessaging && fcmMessaging.deleteToken) fcmMessaging.deleteToken().catch(() => {});
-  if (token) db.collection('fcmTokens').doc(token).delete().catch(() => {});
+  if (token) classCol('fcmTokens').doc(token).delete().catch(() => {});
   renderPushSettingsModal();
 }
 function enablePushNotifications(){
@@ -2164,7 +2162,7 @@ function sendPushNotification(title, content){
   fetch('/api/send-notification', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ title, body: content }),
+    body: JSON.stringify({ title, body: content, classId: currentClassId }),
   })
     .then(res => res.json().catch(() => ({})).then(data => ({ ok: res.ok, data })))
     .then(({ ok, data }) => {
@@ -2189,18 +2187,31 @@ function bootstrapApp(){
     console.warn('오프라인 캐시를 켜지 못했습니다(그냥 매번 서버에서 읽어옵니다):', err.code);
   });
   auth = firebase.auth();
+  // 이 URL(?class=classId)이 어느 반인지 확인하고, 그 반 담당 선생님 이메일을 알아야
+  // 로그인 판정(TEACHER_EMAIL)을 할 수 있어서, 반 문서를 먼저 읽고 나서 나머지를 시작한다.
+  db.collection('classes').doc(currentClassId).get().then(doc => {
+    currentClassDoc = doc.exists ? doc.data() : {};
+    TEACHER_EMAIL = currentClassDoc.teacherEmail || DEFAULT_TEACHER_EMAIL;
+    continueBootstrapApp();
+  }).catch(err => {
+    console.error('반 설정을 불러오지 못했습니다 (기본 계정으로 진행합니다):', err);
+    continueBootstrapApp();
+  });
+}
+
+function continueBootstrapApp(){
   initPushNotifications();
   setupBrandLongPress();
 
   // 공개 데이터 실시간 구독
-  db.collection('schedules').onSnapshot(snap => {
+  classCol('schedules').onSnapshot(snap => {
     schedulesCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     if (currentView === 'dashboard') renderDashboard();
     if (currentView === 'schedule') { renderScheduleList(); renderScheduleCalendar(); }
   });
   // date는 공지 만들 때 항상 채워지는 필드라(createdAt은 옛날 글 중 일부 빠진 경우가 있어서
   // orderBy에 쓰면 그 글들이 통째로 안 읽힐 수 있음), 최근 것 위주로 안전하게 자르는 기준으로 쓴다.
-  db.collection('notices').orderBy('date', 'desc').limit(300).onSnapshot(snap => {
+  classCol('notices').orderBy('date', 'desc').limit(300).onSnapshot(snap => {
     noticesCache = snap.docs.map(d => ({ id: d.id, ...d.data() }))
       .sort((a,b) => noticeSortKey(b) - noticeSortKey(a));
     if (currentView === 'dashboard') renderDashboard();
@@ -2208,17 +2219,17 @@ function bootstrapApp(){
     maybeShowNoticePopup();
     backfillTodayNoticeTimestamps();
   });
-  db.collection('settings').doc('general').get().then(doc => {
-    if (!doc.exists) db.collection('settings').doc('general').set(defaultSettings());
+  classCol('settings').doc('general').get().then(doc => {
+    if (!doc.exists) classCol('settings').doc('general').set(defaultSettings());
   });
   let lastWeatherLocKey = null;
   let lastMealSchoolKey = null;
-  db.collection('settings').doc('general').onSnapshot(doc => {
+  classCol('settings').doc('general').onSnapshot(doc => {
     settingsCache = doc.exists ? { ...defaultSettings(), ...doc.data() } : defaultSettings();
     // 예전 기본 위치(서울시청, 한 번도 직접 바꾼 적 없는 경우)라면 새 기본값(구로구)으로 자동 교체
     if (settingsCache.weatherLocation && settingsCache.weatherLocation.lat === 37.5665 && settingsCache.weatherLocation.lon === 126.978) {
       settingsCache.weatherLocation = defaultSettings().weatherLocation;
-      if (isTeacher) db.collection('settings').doc('general').set({ weatherLocation: settingsCache.weatherLocation }, { merge: true });
+      if (isTeacher) classCol('settings').doc('general').set({ weatherLocation: settingsCache.weatherLocation }, { merge: true });
     }
     document.getElementById('classTitleHeader').textContent = settingsCache.className || '학급 수첩';
     renderNav();
@@ -2232,11 +2243,11 @@ function bootstrapApp(){
     if (currentView === 'photos') renderPhotosView();
     if (currentView === 'admin') renderAdmin();
   });
-  db.collection('settings').doc('cleaningPhoto').onSnapshot(doc => {
+  classCol('settings').doc('cleaningPhoto').onSnapshot(doc => {
     cleaningPhotoCache = doc.exists ? doc.data().data : null;
     if (currentView === 'photos') renderPhotosView();
   });
-  db.collection('settings').doc('clubPhoto').onSnapshot(doc => {
+  classCol('settings').doc('clubPhoto').onSnapshot(doc => {
     clubPhotoCache = doc.exists ? doc.data().data : null;
     if (currentView === 'photos') renderPhotosView();
   });
@@ -2245,27 +2256,23 @@ function bootstrapApp(){
   // (CBT 쪽에서 겪은 것과 같은 문제), 그 위에 여러 명이 동시에 보면서 글이 활발히 올라오면
   // 보는 인원수만큼 읽기가 곱해져 급증하는 문제도 있었다. 이제 담벼락 탭을 열 때만, 그것도
   // 실시간 구독이 아니라 일정 주기로만 다시 읽는다(startWallPublicPolling, switchView 참고).
-  db.collection('stats').doc('visits').onSnapshot(doc => {
+  classCol('stats').doc('visits').onSnapshot(doc => {
     statsCache = doc.exists ? doc.data() : { total: 0, dailyDate: '', dailyCount: 0 };
     if (currentView === 'dashboard') renderDashboard();
   });
-  db.collection('customPages').onSnapshot(snap => {
+  classCol('customPages').onSnapshot(snap => {
     customPagesCache = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => (a.order||0)-(b.order||0));
     renderNav();
     if (currentView.startsWith('custom_')) renderCustomPage(currentView.slice(7));
     if (currentView === 'admin') renderAdmin();
   });
-  db.collection('certExams').onSnapshot(snap => {
+  classCol('certExams').onSnapshot(snap => {
     certExamsCache = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => (a.date||'').localeCompare(b.date||''));
     if (currentView === 'certinfo') renderCertInfo();
   });
-  db.collection('tasks').onSnapshot(snap => {
-    tasksCache = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => (a.createdAt||0)-(b.createdAt||0));
-    if (currentView === 'admin') renderTaskChecklist();
-  }, err => console.error('tasks 컬렉션을 불러오지 못했습니다 (Firestore 보안 규칙을 확인하세요):', err));
 
   auth.onAuthStateChanged(user => {
-    isTeacher = !!(user && user.email === TEACHER_EMAIL);
+    isTeacher = !!(user && (user.email === TEACHER_EMAIL || user.email === SUPER_ADMIN_EMAIL));
     currentUserEmail = user ? user.email : null;
     if (user && isTeacher) {
       if (anonymousVisitCountedThisSession) rollbackAnonymousVisit();
@@ -2315,7 +2322,7 @@ setInterval(() => {
 
 function startStudentsListener(){
   if (studentsUnsub) return;
-  studentsUnsub = db.collection('students').onSnapshot(snap => {
+  studentsUnsub = classCol('students').onSnapshot(snap => {
     studentsCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     if (currentView === 'students') renderStudents();
     if (currentStudentId) renderModalContent();
@@ -2330,7 +2337,7 @@ function syncPublicRosterIndex(){
   clearTimeout(publicRosterSyncTimer);
   publicRosterSyncTimer = setTimeout(() => {
     const roster = studentsCache.map(s => ({ id: s.id, name: s.name || '', number: s.number || '' }));
-    db.collection('settings').doc('publicRoster').set({ students: roster })
+    classCol('settings').doc('publicRoster').set({ students: roster })
       .catch(err => console.error('공개 명단 색인 갱신 실패:', err));
   }, 800);
 }
@@ -2385,7 +2392,7 @@ function renderCheckinStudentPicker(){
     <label class="text-xs font-semibold text-gray-500 block mt-4 mb-1">본인 이름을 찾아 눌러주세요</label>
     <input id="checkinStudentSearch" oninput="filterCheckinStudentList()" placeholder="이름 검색..." class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mb-2">
     <div id="checkinStudentList" class="space-y-1 max-h-72 overflow-y-auto"></div>`;
-  db.collection('settings').doc('publicRoster').get().then(doc => {
+  classCol('settings').doc('publicRoster').get().then(doc => {
     checkinPublicRoster = (doc.exists && doc.data().students) || [];
     checkinPublicRoster.sort((a, b) => (parseInt(a.number) || 0) - (parseInt(b.number) || 0));
     filterCheckinStudentList();
@@ -2406,7 +2413,7 @@ function confirmCheckin(studentId){
   if (!s) return;
   const date = todayStr();
   const now = Date.now();
-  const ref = db.collection('attendance').doc(`${date}_${studentId}`);
+  const ref = classCol('attendance').doc(`${date}_${studentId}`);
   // 보안 규칙상 이 문서는 딱 한 번만 만들 수 있게(create만 허용) 해뒀으니,
   // 이미 있으면 새로 쓰지 않고 그 기록을 그대로 보여준다.
   ref.get().then(existing => {
@@ -2437,7 +2444,7 @@ function stopStudentsListener(){
 // 학생명단과 같은 수준(교사 전용)으로 보호한다.
 function startCounselingSlotsListener(){
   if (counselingSlotsUnsub) return;
-  counselingSlotsUnsub = db.collection('counselingSlots').onSnapshot(snap => {
+  counselingSlotsUnsub = classCol('counselingSlots').onSnapshot(snap => {
     counselingSlotsCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     renderCounselingSlots();
   });
@@ -2454,7 +2461,7 @@ function addCounselingSlot(){
   const method = document.getElementById('counselMethod').value;
   const notes = document.getElementById('counselNotes').value.trim();
   if (!studentName || !parentName || !date || !time) return alert('학생 이름·학부모 성명·날짜·시간을 모두 입력해주세요.');
-  db.collection('counselingSlots').add({ studentName, parentName, date, time, method, notes, createdAt: Date.now() })
+  classCol('counselingSlots').add({ studentName, parentName, date, time, method, notes, createdAt: Date.now() })
     .then(() => {
       ['counselStudentName', 'counselParentName', 'counselTime', 'counselNotes'].forEach(id => { document.getElementById(id).value = ''; });
     })
@@ -2462,7 +2469,7 @@ function addCounselingSlot(){
 }
 function deleteCounselingSlot(id){
   if (!confirm('이 상담 일정을 삭제할까요?')) return;
-  db.collection('counselingSlots').doc(id).delete().catch(err => alert('삭제에 실패했습니다: ' + err.message));
+  classCol('counselingSlots').doc(id).delete().catch(err => alert('삭제에 실패했습니다: ' + err.message));
 }
 // 날짜별로 묶어서 그날 상담이 몇 건인지, 시간 순서대로 한눈에 보이게 한다.
 function renderCounselingSlots(){
@@ -2502,7 +2509,7 @@ function renderCounselingSlots(){
 const WALL_PUBLIC_POLL_INTERVAL_MS = 60 * 1000;
 let wallPostsPublicPollTimer = null;
 function fetchWallPublicOnce(){
-  return db.collection('wallPosts').where('isPrivate', '==', false).limit(300).get().then(snap => {
+  return classCol('wallPosts').where('isPrivate', '==', false).limit(300).get().then(snap => {
     wallPostsPublicCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     if (currentView === 'wall') renderWall();
   }).catch(err => console.error('담벼락 공개 글 조회 실패:', err));
@@ -2520,7 +2527,7 @@ function stopWallPublicPolling(){
 let wallPostsPrivateUnsub = null;
 function startWallPrivateListener(){
   if (wallPostsPrivateUnsub) return;
-  wallPostsPrivateUnsub = db.collection('wallPosts').where('isPrivate', '==', true).limit(300).onSnapshot(snap => {
+  wallPostsPrivateUnsub = classCol('wallPosts').where('isPrivate', '==', true).limit(300).onSnapshot(snap => {
     wallPostsPrivateCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     if (currentView === 'wall') renderWall();
   });
@@ -3157,7 +3164,7 @@ function backfillTodayNoticeTimestamps(){
   if (!missing.length) { noticeTimestampBackfillDone = true; return; }
   noticeTimestampBackfillDone = true;
   const batch = db.batch();
-  missing.forEach(n => batch.update(db.collection('notices').doc(n.id), { createdAt: Date.now() }));
+  missing.forEach(n => batch.update(classCol('notices').doc(n.id), { createdAt: Date.now() }));
   batch.commit().catch(err => console.error('공지 시간 정보 채우기 실패:', err));
 }
 function noticeCardHtml(n, borderColorClass){
@@ -3327,7 +3334,7 @@ function saveWeatherLocation(){
   const lon = parseFloat(document.getElementById('weatherLonField').value);
   if (!name || isNaN(lat) || isNaN(lon)) return alert('지역 이름과 위도·경도를 모두 입력해주세요.');
   settingsCache.weatherLocation = { name, lat, lon };
-  db.collection('settings').doc('general').set({ weatherLocation: settingsCache.weatherLocation }, { merge: true });
+  classCol('settings').doc('general').set({ weatherLocation: settingsCache.weatherLocation }, { merge: true });
   alert('날씨 위치가 저장되었습니다.');
 }
 
@@ -3386,7 +3393,7 @@ function selectMealSchool(i){
   const s = mealSchoolSearchResults[i];
   if (!s) return;
   settingsCache.mealSchool = { officeCode: s.ATPT_OFCDC_SC_CODE, schoolCode: s.SD_SCHUL_CODE, name: s.SCHUL_NM };
-  db.collection('settings').doc('general').set({ mealSchool: settingsCache.mealSchool }, { merge: true });
+  classCol('settings').doc('general').set({ mealSchool: settingsCache.mealSchool }, { merge: true });
   document.getElementById('mealSchoolResults').innerHTML = '';
   document.getElementById('mealSchoolSearch').value = '';
   renderAdmin();
@@ -3399,7 +3406,7 @@ function selectMealSchool(i){
 function rollbackAnonymousVisit(){
   if (!db || !anonymousVisitCountedThisSession) return;
   anonymousVisitCountedThisSession = false;
-  const statsRef = db.collection('stats').doc('visits');
+  const statsRef = classCol('stats').doc('visits');
   db.runTransaction(tx => tx.get(statsRef).then(doc => {
     const data = doc.exists ? doc.data() : { total: 0, dailyDate: todayStr(), dailyCount: 0 };
     const today = todayStr();
@@ -3423,8 +3430,8 @@ function trackVisitWithIp(ip){
   if (isTeacher) return;
   const today = todayStr();
   const now = Date.now();
-  const statsRef = db.collection('stats').doc('visits');
-  const logRef = ip ? db.collection('visitLog').doc(ip) : null;
+  const statsRef = classCol('stats').doc('visits');
+  const logRef = ip ? classCol('visitLog').doc(ip) : null;
 
   db.runTransaction(tx => {
     const logGet = logRef ? tx.get(logRef) : Promise.resolve(null);
@@ -3524,7 +3531,7 @@ async function handleTimetableFileUpload(e){
     const extracted = parseTimetableUploadRows(rows);
     if (!Object.keys(extracted).length) return alert('시간표 형식을 다시 확인해주세요. 다운로드한 엑셀 템플릿을 그대로 올려주세요.');
     settingsCache.timetable = { ...(settingsCache.timetable || {}), ...extracted };
-    db.collection('settings').doc('general').set({ timetable: settingsCache.timetable }, { merge: true });
+    classCol('settings').doc('general').set({ timetable: settingsCache.timetable }, { merge: true });
     renderTimetable();
     alert('엑셀 시간표 파일을 반영했습니다.');
   } catch (err) {
@@ -3572,7 +3579,7 @@ function confirmResetTimetable(){
 }
 function clearTimetableFromPhoto(){
   settingsCache.timetable = {};
-  const generalRef = db.collection('settings').doc('general');
+  const generalRef = classCol('settings').doc('general');
   const clearSavedTimetable = () => {
     generalRef.get().then(doc => {
       const data = doc.exists ? { ...(doc.data() || {}) } : {};
@@ -3664,7 +3671,7 @@ function parseTimetableText(text){
 function updateTimetableCell(key, val){
   settingsCache.timetable = settingsCache.timetable || {};
   settingsCache.timetable[key] = val;
-  db.collection('settings').doc('general').set({ timetable: settingsCache.timetable }, { merge: true });
+  classCol('settings').doc('general').set({ timetable: settingsCache.timetable }, { merge: true });
 }
 
 function handleTimetableKeydown(event, key){
@@ -3687,11 +3694,11 @@ function addSchedule(){
   const title = document.getElementById('scheduleTitle').value.trim();
   const date = document.getElementById('scheduleDate').value;
   if (!title || !date) return alert('일정 제목과 날짜를 입력해주세요.');
-  db.collection('schedules').add({ title, date });
+  classCol('schedules').add({ title, date });
   document.getElementById('scheduleTitle').value = '';
   document.getElementById('scheduleDate').value = '';
 }
-function deleteSchedule(id){ db.collection('schedules').doc(id).delete(); }
+function deleteSchedule(id){ classCol('schedules').doc(id).delete(); }
 let editingScheduleId = null;
 function startEditSchedule(id){ editingScheduleId = id; renderScheduleList(); }
 function cancelEditSchedule(){ editingScheduleId = null; renderScheduleList(); }
@@ -3699,7 +3706,7 @@ function saveEditSchedule(id){
   const date = document.getElementById('editSchedDate_'+id).value;
   const title = document.getElementById('editSchedTitle_'+id).value.trim();
   if (!date || !title) return alert('날짜와 제목을 입력해주세요.');
-  db.collection('schedules').doc(id).set({ date, title }, { merge: true });
+  classCol('schedules').doc(id).set({ date, title }, { merge: true });
   editingScheduleId = null;
 }
 /* --- 학사일정 달력형 보기 --- */
@@ -3919,7 +3926,7 @@ function commitScheduleBulk(){
   if (!scheduleBulkStaged.length) return alert('등록할 일정이 없습니다.');
   const count = scheduleBulkStaged.length;
   const batch = db.batch();
-  scheduleBulkStaged.forEach(p => batch.set(db.collection('schedules').doc(), { date: p.date, title: p.title }));
+  scheduleBulkStaged.forEach(p => batch.set(classCol('schedules').doc(), { date: p.date, title: p.title }));
   batch.commit().then(() => {
     document.getElementById('scheduleBulkInput').value = '';
     scheduleBulkStaged = [];
@@ -4009,18 +4016,18 @@ function renderCertInfo(){
 }
 function saveCertGuide(){
   settingsCache.certGuide = document.getElementById('certGuideField').value;
-  db.collection('settings').doc('general').set({ certGuide: settingsCache.certGuide }, { merge: true });
+  classCol('settings').doc('general').set({ certGuide: settingsCache.certGuide }, { merge: true });
   alert('안내 사항이 저장되었습니다.');
 }
 function addCertExam(){
   const title = document.getElementById('certExamTitle').value.trim();
   const date = document.getElementById('certExamDate').value;
   if (!title || !date) return alert('시험명과 날짜를 입력해주세요.');
-  db.collection('certExams').add({ title, date });
+  classCol('certExams').add({ title, date });
   document.getElementById('certExamTitle').value = '';
   document.getElementById('certExamDate').value = '';
 }
-function deleteCertExam(id){ db.collection('certExams').doc(id).delete(); }
+function deleteCertExam(id){ classCol('certExams').doc(id).delete(); }
 let certExamBulkStaged = [];
 function previewCertExamBulk(){
   const text = document.getElementById('certExamBulkInput').value;
@@ -4056,7 +4063,7 @@ function commitCertExamBulk(){
   if (!certExamBulkStaged.length) return alert('등록할 일정이 없습니다.');
   const count = certExamBulkStaged.length;
   const batch = db.batch();
-  certExamBulkStaged.forEach(p => batch.set(db.collection('certExams').doc(), { date: p.date, title: p.title }));
+  certExamBulkStaged.forEach(p => batch.set(classCol('certExams').doc(), { date: p.date, title: p.title }));
   batch.commit().then(() => {
     document.getElementById('certExamBulkInput').value = '';
     certExamBulkStaged = [];
@@ -4106,7 +4113,7 @@ function maybeShowNoticePopup(){
   document.getElementById('noticePopupModal').classList.remove('hidden');
   localStorage.setItem(NOTICE_POPUP_SEEN_KEY, seenKey);
   if (!isTeacher) {
-    db.collection('notices').doc(target.id).update({ viewCount: firebase.firestore.FieldValue.increment(1) }).catch(() => {});
+    classCol('notices').doc(target.id).update({ viewCount: firebase.firestore.FieldValue.increment(1) }).catch(() => {});
   }
 }
 function closeNoticePopup(){
@@ -4133,7 +4140,7 @@ function openNoticesListModal(){
   // "학생이 읽었는지" 지표를 왜곡하니 카운트하지 않는다.
   if (sorted.length && !isTeacher) {
     const batch = db.batch();
-    sorted.forEach(n => batch.update(db.collection('notices').doc(n.id), { viewCount: firebase.firestore.FieldValue.increment(1) }));
+    sorted.forEach(n => batch.update(classCol('notices').doc(n.id), { viewCount: firebase.firestore.FieldValue.increment(1) }));
     batch.commit().catch(err => console.error('공지 조회수 기록 실패:', err));
   }
 }
@@ -5018,7 +5025,7 @@ function saveTetrisScore(){
   const input = document.getElementById('tetrisNameInput');
   const name = input.value.trim().slice(0, 10);
   if (!name) return alert('이름/별명을 입력해주세요.');
-  db.collection('tetrisScores').add({
+  classCol('tetrisScores').add({
     name, score: tetrisState.score, stage: tetrisState.stage, lines: tetrisState.lines, createdAt: Date.now(),
   }).then(() => {
     document.getElementById('tetrisNameModal').classList.add('hidden');
@@ -5038,7 +5045,7 @@ function loadTetrisLeaderboard(){
   const listEl = document.getElementById('tetrisLeaderboardList');
   listEl.textContent = '불러오는 중...';
   document.getElementById('tetrisResetScoresBtn').classList.toggle('hidden', !isTeacher);
-  db.collection('tetrisScores').orderBy('score', 'desc').limit(10).get().then(snap => {
+  classCol('tetrisScores').orderBy('score', 'desc').limit(10).get().then(snap => {
     const list = snap.docs.map(d => d.data());
     listEl.innerHTML = list.length ? list.map((s, i) => `
       <div class="flex items-center justify-between border-b border-white/10 pb-1">
@@ -5050,7 +5057,7 @@ function loadTetrisLeaderboard(){
 function resetTetrisScores(){
   if (!isTeacher) return;
   if (!confirm('테트리스 전체 기록을 정말 초기화할까요? 되돌릴 수 없습니다.')) return;
-  db.collection('tetrisScores').get().then(snap => {
+  classCol('tetrisScores').get().then(snap => {
     const batch = db.batch();
     snap.docs.forEach(d => batch.delete(d.ref));
     return batch.commit();
@@ -5358,7 +5365,7 @@ function commitStudentBulk(){
   const parsed = parseStudentBulkText(document.getElementById('studentBulkInput').value);
   if (!parsed.length) return alert('등록할 학생이 없습니다.');
   const batch = db.batch();
-  parsed.forEach(p => batch.set(db.collection('students').doc(), mkStudent(p.name, p.number)));
+  parsed.forEach(p => batch.set(classCol('students').doc(), mkStudent(p.name, p.number)));
   batch.commit().then(() => {
     document.getElementById('studentBulkInput').value = '';
     document.getElementById('studentBulkPreview').innerHTML = '';
@@ -5486,7 +5493,7 @@ async function saveHealthPassword(){
   if (!value) return alert('새 비밀번호를 입력해주세요. 기존 비밀번호를 그대로 두려면 저장을 누르지 말고 비워두세요.');
   const hash = await sha256Hex(value);
   settingsCache.healthPasswordHash = hash;
-  await db.collection('settings').doc('general').set({
+  await classCol('settings').doc('general').set({
     healthPasswordHash: hash,
     healthPassword: firebase.firestore.FieldValue.delete(),
   }, { merge: true });
@@ -5498,7 +5505,7 @@ async function saveConsultPassword(){
   if (!value) return alert('새 비밀번호를 입력해주세요. 기존 비밀번호를 그대로 두려면 저장을 누르지 말고 비워두세요.');
   const hash = await sha256Hex(value);
   settingsCache.consultPasswordHash = hash;
-  await db.collection('settings').doc('general').set({
+  await classCol('settings').doc('general').set({
     consultPasswordHash: hash,
     consultPassword: firebase.firestore.FieldValue.delete(),
   }, { merge: true });
@@ -5549,7 +5556,7 @@ async function saveAssignmentPassword(){
   if (!value) return alert('새 비밀번호를 입력해주세요. 기존 비밀번호를 그대로 두려면 저장을 누르지 말고 비워두세요.');
   const hash = await sha256Hex(value);
   settingsCache.assignmentPasswordHash = hash;
-  await db.collection('settings').doc('general').set({
+  await classCol('settings').doc('general').set({
     assignmentPasswordHash: hash,
     assignmentPassword: firebase.firestore.FieldValue.delete(),
   }, { merge: true });
@@ -5583,7 +5590,7 @@ function confirmAddStudent(){
   const name = document.getElementById('addStudentName').value.trim();
   const number = document.getElementById('addStudentNumber').value.trim() || String(studentsCache.length + 1);
   if (!name) return alert('이름을 입력해주세요.');
-  db.collection('students').add(mkStudent(name, number)).then(ref => {
+  classCol('students').add(mkStudent(name, number)).then(ref => {
     closeAddStudentModal();
     openStudentEditor(ref.id);
   });
@@ -5598,13 +5605,13 @@ function closeStudentModal(){
 }
 function deleteCurrentStudent(){
   if (!confirm('이 학생 정보를 삭제하시겠습니까?')) return;
-  db.collection('students').doc(currentStudentId).delete();
+  classCol('students').doc(currentStudentId).delete();
   closeStudentModal();
 }
 function getCurrentStudent(){ return studentsCache.find(s => s.id === currentStudentId); }
 function persistStudent(s){
   const { id, ...rest } = s;
-  db.collection('students').doc(id).set(rest, { merge: true });
+  classCol('students').doc(id).set(rest, { merge: true });
 }
 
 function renderModal(){
@@ -5947,8 +5954,8 @@ function confirmSendAbsentPush(){
 // 있게 한다(이 로그는 학생 화면에는 안 쓰이고 관리자 "다시 보내기" 목록에만 쓰인다).
 function broadcastLiveNote(text, imageUrl){
   const sentAt = Date.now();
-  db.collection('settings').doc('general').set({ liveNote: { text, imageUrl, sentAt } }, { merge: true });
-  db.collection('liveNotes').add({ text, imageUrl, sentAt });
+  classCol('settings').doc('general').set({ liveNote: { text, imageUrl, sentAt } }, { merge: true });
+  classCol('liveNotes').add({ text, imageUrl, sentAt });
   // 포스트잇은 원래 "지금 보고 있는 사람에게만" 뜨는 기능이었는데, 앱을 안 켜놓은 학생한테도
   // 닿게 해달라는 요청으로 휴대폰 푸시도 같이 보낸다(공지 팝업과 같은 방식 재사용).
   sendPushNotification('📌 선생님 메시지', text || '사진을 보내셨어요. 앱을 열어서 확인해보세요.');
@@ -5962,7 +5969,7 @@ function loadLiveNoteHistory(){
   if (liveNoteHistoryLoaded) return;
   liveNoteHistoryLoaded = true;
   const listEl = document.getElementById('liveNoteHistoryList');
-  db.collection('liveNotes').orderBy('sentAt', 'desc').limit(20).get().then(snap => {
+  classCol('liveNotes').orderBy('sentAt', 'desc').limit(20).get().then(snap => {
     const items = snap.docs.map(d => d.data());
     listEl.innerHTML = items.length ? items.map(n => `
       <div class="flex items-center justify-between gap-2 border-b border-gray-100 pb-1.5">
@@ -6062,9 +6069,9 @@ function saveNotice(){
   const popupUntil = popupOn && popupUntilRaw < popupFrom ? popupFrom : popupUntilRaw;
   if (editingNoticeId) {
     // 요청대로, 수정하면 날짜도 오늘로 새로 갱신하고 "수정됨" 표시를 위해 수정 시각을 남긴다.
-    db.collection('notices').doc(editingNoticeId).update({ title, content, tags, imageUrl, pinned, color, popupFrom, popupUntil, date: todayStr(), updatedAt: Date.now() });
+    classCol('notices').doc(editingNoticeId).update({ title, content, tags, imageUrl, pinned, color, popupFrom, popupUntil, date: todayStr(), updatedAt: Date.now() });
   } else {
-    db.collection('notices').add({ date: todayStr(), title, content, tags, imageUrl, pinned, color, popupFrom, popupUntil, createdAt: Date.now() });
+    classCol('notices').add({ date: todayStr(), title, content, tags, imageUrl, pinned, color, popupFrom, popupUntil, createdAt: Date.now() });
   }
   // 팝업으로 강조하기로 한 공지는 휴대폰 푸시 알림도 같이 보낸다.
   if (popupOn) sendPushNotification(title, content);
@@ -6115,7 +6122,7 @@ function cancelNoticeEdit(){
 }
 function deleteNotice(id){
   if (editingNoticeId === id) cancelNoticeEdit();
-  db.collection('notices').doc(id).delete();
+  classCol('notices').doc(id).delete();
 }
 function setTagFilter(tag){ activeTagFilter = activeTagFilter === tag ? null : tag; renderNotices(); }
 let noticeListFilter = 'all';
@@ -6208,7 +6215,7 @@ function saveNavLabelRename(k){
   if (!newLabel) return alert('이름을 입력해주세요.');
   settingsCache.navLabels = settingsCache.navLabels || {};
   settingsCache.navLabels[k] = newLabel;
-  db.collection('settings').doc('general').set({ navLabels: settingsCache.navLabels }, { merge: true });
+  classCol('settings').doc('general').set({ navLabels: settingsCache.navLabels }, { merge: true });
   editingNavLabelKey = null;
   renderNavOrderList();
 }
@@ -6222,7 +6229,7 @@ function navDrop(e, i){
   order.splice(i, 0, moved);
   navDragIndex = null;
   settingsCache.navOrder = order;
-  db.collection('settings').doc('general').set({ navOrder: order }, { merge: true });
+  classCol('settings').doc('general').set({ navOrder: order }, { merge: true });
   renderNavOrderList();
 }
 
@@ -6232,7 +6239,6 @@ function navDrop(e, i){
 const ADMIN_CARD_LABELS = {
   shareLink: '🔗 학생 공유 링크 & QR',
   attendanceGeo: '📍 등교 확인 QR (위치 기반)',
-  taskChecklist: '📋 학급 업무 체크리스트',
   certRoadmap: '🏅 자격증 안내 로드맵 편집',
   noticesManage: '📢 공유 페이지(공지사항) 관리',
   liveNote: '📌 실시간 포스트잇 메시지',
@@ -6298,7 +6304,7 @@ function adminCardDrop(e, i){
   order.splice(i, 0, moved);
   adminCardDragIndex = null;
   settingsCache.adminCardOrder = order;
-  db.collection('settings').doc('general').set({ adminCardOrder: order }, { merge: true });
+  classCol('settings').doc('general').set({ adminCardOrder: order }, { merge: true });
   renderAdminCardOrderList();
   applyAdminCardOrder();
 }
@@ -6359,7 +6365,7 @@ function dashCardDrop(e, i){
   order.splice(i, 0, moved);
   dashCardDragIndex = null;
   settingsCache.dashCardOrder = order;
-  db.collection('settings').doc('general').set({ dashCardOrder: order }, { merge: true });
+  classCol('settings').doc('general').set({ dashCardOrder: order }, { merge: true });
   renderDashCardOrderList();
   applyDashCardOrder();
 }
@@ -6369,14 +6375,14 @@ function addWallColumn(){
   if (!val) return;
   settingsCache.wallColumns = settingsCache.wallColumns || [];
   if (!settingsCache.wallColumns.includes(val)) settingsCache.wallColumns.push(val);
-  db.collection('settings').doc('general').set({ wallColumns: settingsCache.wallColumns }, { merge: true });
+  classCol('settings').doc('general').set({ wallColumns: settingsCache.wallColumns }, { merge: true });
   document.getElementById('newWallColumn').value = '';
   renderAdmin();
 }
 function removeWallColumn(i){
   if (!confirm('이 게시판을 삭제하면 목록에서 더 이상 보이지 않아요 (안의 게시물 데이터는 남아있습니다). 삭제할까요?')) return;
   settingsCache.wallColumns.splice(i, 1);
-  db.collection('settings').doc('general').set({ wallColumns: settingsCache.wallColumns }, { merge: true });
+  classCol('settings').doc('general').set({ wallColumns: settingsCache.wallColumns }, { merge: true });
   renderAdmin();
 }
 let editingWallColumnIndex = null;
@@ -6390,15 +6396,15 @@ function saveWallColumnRename(i){
   if (settingsCache.wallColumns.includes(newName)) return alert('이미 있는 게시판 이름입니다.');
   settingsCache.wallColumns[i] = newName;
   const batch = db.batch();
-  batch.set(db.collection('settings').doc('general'), { wallColumns: settingsCache.wallColumns }, { merge: true });
+  batch.set(classCol('settings').doc('general'), { wallColumns: settingsCache.wallColumns }, { merge: true });
   // 이름을 바꿀 게시판(oldName)에 속한 글만 딱 찾아서 바꾼다 — 담벼락 전체를 캐시에 들고
   // 있지 않아도(공개 글은 이제 담벼락 탭을 볼 때만 폴링) 필요한 시점에 필요한 만큼만 읽는다.
   Promise.all([
-    db.collection('wallPosts').where('isPrivate', '==', false).where('column', '==', oldName).get(),
-    db.collection('wallPosts').where('isPrivate', '==', true).where('column', '==', oldName).get(),
+    classCol('wallPosts').where('isPrivate', '==', false).where('column', '==', oldName).get(),
+    classCol('wallPosts').where('isPrivate', '==', true).where('column', '==', oldName).get(),
   ]).then(([pubSnap, privSnap]) => {
     [...pubSnap.docs, ...privSnap.docs].forEach(d => {
-      batch.set(db.collection('wallPosts').doc(d.id), { column: newName }, { merge: true });
+      batch.set(classCol('wallPosts').doc(d.id), { column: newName }, { merge: true });
     });
     return batch.commit();
   }).then(() => {
@@ -6422,40 +6428,10 @@ function wallColumnDrop(e, i){
   const [moved] = arr.splice(wallColumnDragIndex, 1);
   arr.splice(i, 0, moved);
   wallColumnDragIndex = null;
-  db.collection('settings').doc('general').set({ wallColumns: arr }, { merge: true });
+  classCol('settings').doc('general').set({ wallColumns: arr }, { merge: true });
   renderAdmin();
 }
 
-function renderTaskChecklist(){
-  const el = document.getElementById('taskChecklistList');
-  if (!el) return;
-  el.innerHTML = tasksCache.length ? tasksCache.map(t => `
-    <div class="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-3 py-2">
-      <input type="checkbox" ${t.done ? 'checked' : ''} onchange="toggleTask('${t.id}', ${!!t.done})" class="w-4 h-4 accent-forest shrink-0">
-      <span class="flex-1 ${t.done ? 'line-through text-gray-400' : 'text-ink'}">${escapeHtml(t.text || '')}</span>
-      <button onclick="deleteTask('${t.id}')" class="text-gray-300 hover:text-brick text-lg leading-none shrink-0">&times;</button>
-    </div>
-  `).join('') : '<p class="text-xs text-gray-400">등록된 할 일이 없습니다.</p>';
-}
-// 구글 시트와 양방향 동기화 (Apps Script 웹앱 배포 후 URL을 여기에 붙여넣으세요)
-const TASK_SHEET_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbxRNnuw-iZsXYBYzFBDEA7-m_TfgwZfPG1z6lW3KJmkvX-uSt8sCkS-XA75QNJt2-99/exec';
-function syncTaskToSheet(action, task){
-  if (!TASK_SHEET_WEBHOOK_URL) return;
-  fetch(TASK_SHEET_WEBHOOK_URL, { method: 'POST', body: JSON.stringify({ action, ...task }) })
-    .catch(err => console.error('시트 동기화 실패:', err));
-}
-function addTask(){
-  const input = document.getElementById('newTaskInput');
-  const text = input.value.trim();
-  if (!text) return;
-  const createdAt = Date.now();
-  db.collection('tasks').add({ text, done: false, createdAt })
-    .then(ref => {
-      input.value = '';
-      syncTaskToSheet('upsert', { id: ref.id, text, done: false, createdAt });
-    })
-    .catch(err => alert('할 일 추가에 실패했습니다: ' + err.message));
-}
 // 관리자 설정 제목 옆에 보이는 개인용 바로가기 — 원하는 만큼 추가할 수 있고, 학생에게는 노출되지 않는다.
 let personalLinksEditOpen = false;
 function togglePersonalLinksEdit(){
@@ -6489,7 +6465,7 @@ function addPersonalLink(){
   if (!url) return alert('링크 주소를 입력해주세요.');
   const links = [...(settingsCache.personalLinks || []), { name, url }];
   settingsCache.personalLinks = links;
-  db.collection('settings').doc('general').set({ personalLinks: links }, { merge: true });
+  classCol('settings').doc('general').set({ personalLinks: links }, { merge: true });
   nameInput.value = '';
   urlInput.value = '';
   renderPersonalLinksInputs();
@@ -6498,22 +6474,8 @@ function removePersonalLink(i){
   const links = [...(settingsCache.personalLinks || [])];
   links.splice(i, 1);
   settingsCache.personalLinks = links;
-  db.collection('settings').doc('general').set({ personalLinks: links }, { merge: true });
+  classCol('settings').doc('general').set({ personalLinks: links }, { merge: true });
   renderPersonalLinksInputs();
-}
-function toggleTask(id, current){
-  const done = !current;
-  db.collection('tasks').doc(id).set({ done }, { merge: true })
-    .then(() => {
-      const t = tasksCache.find(x => x.id === id);
-      syncTaskToSheet('upsert', { id, text: t ? t.text : '', done, createdAt: t ? t.createdAt : Date.now() });
-    })
-    .catch(err => alert('업데이트에 실패했습니다: ' + err.message));
-}
-function deleteTask(id){
-  db.collection('tasks').doc(id).delete()
-    .then(() => syncTaskToSheet('delete', { id }))
-    .catch(err => alert('삭제에 실패했습니다: ' + err.message));
 }
 function renderCertRoadmapForm(){
   const data = getCertRoadmap();
@@ -6549,14 +6511,14 @@ function saveCertRoadmap(){
     },
   };
   settingsCache.certRoadmap = certRoadmap;
-  db.collection('settings').doc('general').set({ certRoadmap }, { merge: true });
+  classCol('settings').doc('general').set({ certRoadmap }, { merge: true });
   alert('저장되었습니다.');
 }
 function resetCertRoadmap(){
   if (!confirm('로드맵 내용을 기본값으로 되돌릴까요?')) return;
   settingsCache.certRoadmap = null;
-  db.collection('settings').doc('general').update({ certRoadmap: firebase.firestore.FieldValue.delete() }).catch(() => {
-    db.collection('settings').doc('general').set({ certRoadmap: null }, { merge: true });
+  classCol('settings').doc('general').update({ certRoadmap: firebase.firestore.FieldValue.delete() }).catch(() => {
+    classCol('settings').doc('general').set({ certRoadmap: null }, { merge: true });
   });
   renderCertRoadmapForm();
 }
@@ -6687,7 +6649,7 @@ function closeCheckinQrZoom(){
 function loadTodayAttendance(){
   const el = document.getElementById('attendanceTodayList');
   el.textContent = '불러오는 중...';
-  db.collection('attendance').where('date', '==', todayStr()).get().then(snap => {
+  classCol('attendance').where('date', '==', todayStr()).get().then(snap => {
     const list = snap.docs.map(d => d.data()).sort((a, b) => (a.checkedInAt || 0) - (b.checkedInAt || 0));
     el.innerHTML = list.length ? `
       <p class="text-xs font-semibold text-forest-dark mb-1">오늘 등교 확인 ${list.length}명</p>
@@ -6703,13 +6665,13 @@ function loadTodayAttendance(){
 }
 function saveClassName(){
   settingsCache.className = document.getElementById('classNameField').value.trim();
-  db.collection('settings').doc('general').set({ className: settingsCache.className }, { merge: true });
+  classCol('settings').doc('general').set({ className: settingsCache.className }, { merge: true });
   alert('학급명이 저장되었습니다.');
 }
 function saveHealthRecoveryEmail(){
   const value = document.getElementById('healthRecoveryEmailField').value.trim();
   settingsCache.healthRecoveryEmail = value || (TEACHER_EMAIL || '');
-  db.collection('settings').doc('general').set({ healthRecoveryEmail: settingsCache.healthRecoveryEmail }, { merge: true });
+  classCol('settings').doc('general').set({ healthRecoveryEmail: settingsCache.healthRecoveryEmail }, { merge: true });
   alert('복구용 이메일이 저장되었습니다.');
 }
 function saveBlogBadge(){
@@ -6723,7 +6685,7 @@ function saveBlogBadge(){
     youtubeUrl: document.getElementById('youtubeUrlField').value.trim(),
     links: (settingsCache.blogBadge && settingsCache.blogBadge.links) || [],
   };
-  db.collection('settings').doc('general').set({ blogBadge: settingsCache.blogBadge }, { merge: true });
+  classCol('settings').doc('general').set({ blogBadge: settingsCache.blogBadge }, { merge: true });
   alert('저장되었습니다.');
 }
 // 버튼 이름에 서비스 이름이 들어있으면 어울리는 이모지를 자동으로 골라준다.
@@ -6796,26 +6758,26 @@ function addExtraBadgeLink(){
   extraBadgeIconOverride = null;
   document.getElementById('extraBadgeIconBtn').textContent = '🔗';
   renderAdmin();
-  db.collection('settings').doc('general').set({ blogBadge: settingsCache.blogBadge }, { merge: true });
+  classCol('settings').doc('general').set({ blogBadge: settingsCache.blogBadge }, { merge: true });
 }
 function removeExtraBadgeLink(i){
   settingsCache.blogBadge = settingsCache.blogBadge || defaultSettings().blogBadge;
   settingsCache.blogBadge.links = settingsCache.blogBadge.links || [];
   settingsCache.blogBadge.links.splice(i,1);
   renderAdmin();
-  db.collection('settings').doc('general').set({ blogBadge: settingsCache.blogBadge }, { merge: true });
+  classCol('settings').doc('general').set({ blogBadge: settingsCache.blogBadge }, { merge: true });
 }
 function addCertTypeAdmin(){
   const val = document.getElementById('newCertTypeAdmin').value.trim();
   if (!val) return;
   if (!settingsCache.certificateTypes.includes(val)) settingsCache.certificateTypes.push(val);
-  db.collection('settings').doc('general').set({ certificateTypes: settingsCache.certificateTypes }, { merge: true });
+  classCol('settings').doc('general').set({ certificateTypes: settingsCache.certificateTypes }, { merge: true });
   document.getElementById('newCertTypeAdmin').value = '';
   renderAdmin();
 }
 function removeCertTypeAdmin(i){
   settingsCache.certificateTypes.splice(i,1);
-  db.collection('settings').doc('general').set({ certificateTypes: settingsCache.certificateTypes }, { merge: true });
+  classCol('settings').doc('general').set({ certificateTypes: settingsCache.certificateTypes }, { merge: true });
   renderAdmin();
 }
 
@@ -6830,7 +6792,7 @@ function saveCertLink(i){
   if (!url) return alert('링크 주소를 입력해주세요.');
   settingsCache.certLinks = settingsCache.certLinks || {};
   settingsCache.certLinks[type] = url;
-  db.collection('settings').doc('general').set({ certLinks: settingsCache.certLinks }, { merge: true });
+  classCol('settings').doc('general').set({ certLinks: settingsCache.certLinks }, { merge: true });
   alert(`"${type}" 링크가 저장되었습니다.`);
 }
 function addExtraCertLink(){
@@ -6839,14 +6801,14 @@ function addExtraCertLink(){
   if (!label || !url) return alert('이름과 링크 주소를 모두 입력해주세요.');
   settingsCache.extraCertLinks = settingsCache.extraCertLinks || [];
   settingsCache.extraCertLinks.push({ label, url });
-  db.collection('settings').doc('general').set({ extraCertLinks: settingsCache.extraCertLinks }, { merge: true });
+  classCol('settings').doc('general').set({ extraCertLinks: settingsCache.extraCertLinks }, { merge: true });
   document.getElementById('extraLinkLabel').value = '';
   document.getElementById('extraLinkUrl').value = '';
   renderAdmin();
 }
 function removeExtraCertLink(i){
   settingsCache.extraCertLinks.splice(i,1);
-  db.collection('settings').doc('general').set({ extraCertLinks: settingsCache.extraCertLinks }, { merge: true });
+  classCol('settings').doc('general').set({ extraCertLinks: settingsCache.extraCertLinks }, { merge: true });
   renderAdmin();
 }
 
@@ -6869,13 +6831,13 @@ function addCustomPage(){
   const content = document.getElementById('customPageContent').value.trim();
   const isPublic = document.getElementById('customPageVisibility').value === 'public';
   if (!title) return alert('탭 이름을 입력해주세요.');
-  db.collection('customPages').add({ title, content, isPublic, order: Date.now() });
+  classCol('customPages').add({ title, content, isPublic, order: Date.now() });
   document.getElementById('customPageTitle').value = '';
   document.getElementById('customPageContent').value = '';
 }
 function deleteCustomPage(id){
   if (!confirm('이 탭을 삭제하시겠습니까?')) return;
-  db.collection('customPages').doc(id).delete();
+  classCol('customPages').doc(id).delete();
   if (currentView === 'custom_'+id) switchView('dashboard');
 }
 let currentCustomPageId = null;
@@ -6897,7 +6859,7 @@ function renderCustomPage(id){
 }
 function saveCustomPageEdit(){
   const content = document.getElementById('customPageEditField').value;
-  db.collection('customPages').doc(currentCustomPageId).set({ content }, { merge: true });
+  classCol('customPages').doc(currentCustomPageId).set({ content }, { merge: true });
   alert('저장되었습니다.');
 }
 </script>
