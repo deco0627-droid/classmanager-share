@@ -7,6 +7,40 @@
 // npm 패키지 없이 Web Crypto API만으로 Google 서비스 계정 OAuth2 인증을 직접 구현한다
 // (Cloudflare Pages Functions 런타임에서 firebase-admin 같은 Node 전용 SDK는 잘 안 돌아간다).
 
+// 원래 이 API에 인증 확인이 전혀 없어서, URL만 알면 로그인 없이 누구나 등록된 모든 학생
+// 기기로 원하는 제목·내용의 푸시 알림을 보낼 수 있었다(스팸·피싱에 악용될 수 있는 구멍).
+// edu.jkjin은 모든 반의 최상위 관리자이고, 그 외에는 요청한 classId의 담당 선생님만 허용한다.
+const SUPER_ADMIN_EMAIL = 'edu.jkjin@gmail.com';
+const FIREBASE_API_KEY = 'AIzaSyB3Lg1SORQGZvz2gWUfFLParvkVbMQLguU';
+async function verifyTeacher(request, classId, accessToken, projectId) {
+  const authHeader = request.headers.get('Authorization') || '';
+  const idToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+  if (!idToken) return false;
+  try {
+    const res = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${FIREBASE_API_KEY}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ idToken }),
+    });
+    if (!res.ok) return false;
+    const data = await res.json();
+    const user = data.users && data.users[0];
+    const email = user && user.email;
+    if (!email) return false;
+    if (email === SUPER_ADMIN_EMAIL) return true;
+    const classRes = await fetch(
+      `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/classes/${classId}`,
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    );
+    if (!classRes.ok) return false;
+    const classDoc = await classRes.json();
+    const teacherEmail = classDoc.fields && classDoc.fields.teacherEmail && classDoc.fields.teacherEmail.stringValue;
+    return !!teacherEmail && email === teacherEmail;
+  } catch (e) {
+    return false;
+  }
+}
+
 function base64UrlEncode(input) {
   let binary;
   if (typeof input === 'string') {
@@ -96,6 +130,11 @@ export async function onRequestPost(context) {
     const serviceAccount = JSON.parse(saJson);
     const projectId = serviceAccount.project_id;
     const accessToken = await getAccessToken(serviceAccount);
+
+    if (!(await verifyTeacher(request, classId, accessToken, projectId))) {
+      return new Response(JSON.stringify({ error: '권한이 없습니다.' }), { status: 403 });
+    }
+
     const fcmTokensPath = `projects/${projectId}/databases/(default)/documents/classes/${classId}/fcmTokens`;
 
     // 이 반의 fcmTokens 컬렉션에 등록된 기기 토큰을 전부 가져온다.

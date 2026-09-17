@@ -1676,10 +1676,10 @@ function renderPhotosView(){
   // 있어서, 비밀번호를 아직 안 풀었으면 여기서도 한 번 더 막아야 사진이 뒤에서 새지 않는다.
   if (!isTeacher && !isAssignmentUnlocked()) return;
   document.getElementById('cleaningPhotoView').innerHTML = cleaningPhotoCache
-    ? `<img src="${cleaningPhotoCache}" class="w-full h-auto cursor-pointer" onclick="openPhotoZoom(this.src)">`
+    ? `<img src="${escapeAttr(cleaningPhotoCache)}" class="w-full h-auto cursor-pointer" onclick="openPhotoZoom(this.src)">`
     : `<p class="text-gray-400 text-sm p-8">등록된 사진이 없습니다.</p>`;
   document.getElementById('clubPhotoView').innerHTML = clubPhotoCache
-    ? `<img src="${clubPhotoCache}" class="w-full h-auto cursor-pointer" onclick="openPhotoZoom(this.src)">`
+    ? `<img src="${escapeAttr(clubPhotoCache)}" class="w-full h-auto cursor-pointer" onclick="openPhotoZoom(this.src)">`
     : `<p class="text-gray-400 text-sm p-8">등록된 사진이 없습니다.</p>`;
   syncAssignmentPhotoButtons();
   renderAssignmentTable('cleaning');
@@ -1738,7 +1738,7 @@ function renderWall(){
               ${p.pinned ? `<span class="text-[9px] font-bold text-amber">📌 공지</span>` : ''}
               ${p.isPrivate ? `<span class="text-[9px] font-semibold text-brick">🔒 비밀글 (교사만 볼 수 있음)</span>` : ''}
             </div>
-            ${p.image ? `<img src="${p.image}" class="w-full rounded mb-2 cursor-pointer" onclick="openPhotoZoom(this.src)">` : ''}
+            ${p.image ? `<img src="${escapeAttr(p.image)}" class="w-full rounded mb-2 cursor-pointer" onclick="openPhotoZoom(this.src)">` : ''}
             <p class="text-xs whitespace-pre-line text-ink">${linkifyText(escapeHtml(p.content))}</p>
             <div class="flex items-center justify-between mt-1.5">
               <p class="text-[10px] text-ink/50">${escapeHtml(p.author || '익명')} · ${timeAgo(p.createdAt || 0)}</p>
@@ -1881,7 +1881,7 @@ function mkStudent(name, number){
   return {
     name, number,
     consultLogs: [], health: '', electiveCourses: [], certificates: [],
-    cleaningArea: '', club: '', clubTeacher: '', awards: [],
+    cleaningArea: '', club: '', clubTeacher: '', awards: [], fieldTrips: [],
   };
 }
 function defaultSettings(){
@@ -2083,11 +2083,14 @@ function showInAppPushToast(title, body){
 // 공지 등록/수정 시 팝업 알림이 켜져 있거나, 포스트잇을 보낼 때 실제 휴대폰 푸시를 보낸다.
 // 결과(성공/실패 이유)를 화면에 토스트로 바로 보여줘서, 조용히 실패하는 일이 없게 한다.
 function sendPushNotification(title, content){
-  fetch('/api/send-notification', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ title, body: content, classId: currentClassId }),
-  })
+  if (!auth.currentUser) { showInAppPushToast('푸시 발송 실패', '로그인이 필요합니다.'); return; }
+  auth.currentUser.getIdToken().then(idToken =>
+    fetch('/api/send-notification', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + idToken },
+      body: JSON.stringify({ title, body: content, classId: currentClassId }),
+    })
+  )
     .then(res => res.json().catch(() => ({})).then(data => ({ ok: res.ok, data })))
     .then(({ ok, data }) => {
       if (!ok || data.error) {
@@ -3196,7 +3199,7 @@ function noticeCardHtml(n, borderColorClass){
         <p class="text-gray-500 text-sm mt-0.5 line-clamp-2">${escapeHtml(n.content)}</p>
         <p class="font-mono text-[13px] text-gray-400 mt-1">${noticeDateTimeLabel(n)}</p>
       </div>
-      ${n.imageUrl ? `<img src="${n.imageUrl}" class="w-12 h-12 rounded-lg object-cover border border-gray-200 shrink-0" alt="">` : ''}
+      ${n.imageUrl ? `<img src="${escapeAttr(n.imageUrl)}" class="w-12 h-12 rounded-lg object-cover border border-gray-200 shrink-0" alt="">` : ''}
     </div>`;
 }
 function renderDashboard(){
@@ -4132,7 +4135,7 @@ function openNoticesListModal(){
       </div>
       <p class="font-mono text-xs text-gray-400 mb-2">${noticeDateTimeLabel(n)}</p>
       <p class="text-base text-gray-700 whitespace-pre-line">${escapeHtml(n.content)}</p>
-      ${n.imageUrl ? `<img src="${n.imageUrl}" class="w-full rounded-lg border border-gray-200 mt-2" alt="">` : ''}
+      ${n.imageUrl ? `<img src="${escapeAttr(n.imageUrl)}" class="w-full rounded-lg border border-gray-200 mt-2" alt="">` : ''}
       <div class="flex gap-1.5 mt-3 flex-wrap">
         ${(n.tags||[]).map(t => `<span class="text-xs bg-amber-light text-amber px-2 py-0.5 rounded-full">#${escapeHtml(t)}</span>`).join('')}
       </div>
@@ -4299,6 +4302,7 @@ function getStudentTagList(student){
   if ((student.cleaningArea || '').trim()) tags.push('청소');
   if ((student.certificates || []).length) tags.push('자격증');
   if ((student.awards || []).length) tags.push('수상');
+  if ((student.fieldTrips || []).length) tags.push(`체험학습 ${summarizeFieldTrips(student.fieldTrips).total}일`);
   return tags.slice(0, 4);
 }
 
@@ -4327,6 +4331,7 @@ const STUDENT_SUMMARY_TABS = [
   { key: 'cleaning', label: '청소' },
   { key: 'club', label: '동아리' },
   { key: 'awards', label: '수상' },
+  { key: 'fieldtrip', label: '체험학습' },
 ];
 
 function renderStudentQuickSummary(){
@@ -4341,6 +4346,7 @@ function renderStudentQuickSummary(){
     { key: 'cleaning', title: '청소', count: studentsCache.filter(s => !!(s.cleaningArea || '').trim()).length },
     { key: 'club', title: '동아리', count: studentsCache.filter(s => !!(s.club || '').trim()).length },
     { key: 'awards', title: '수상', count: studentsCache.filter(s => (s.awards || []).length > 0).length },
+    { key: 'fieldtrip', title: '체험학습', count: studentsCache.filter(s => (s.fieldTrips || []).length > 0).length },
   ];
 
   root.innerHTML = summary.map(item => `
@@ -4369,6 +4375,7 @@ function renderStudentSummaryPanel(){
     if (studentSummaryFilter === 'cleaning') return !!(s.cleaningArea || '').trim();
     if (studentSummaryFilter === 'club') return !!(s.club || '').trim();
     if (studentSummaryFilter === 'awards') return (s.awards || []).length > 0;
+    if (studentSummaryFilter === 'fieldtrip') return (s.fieldTrips || []).length > 0;
     return true;
   });
 
@@ -4395,6 +4402,7 @@ function renderStudentSummaryPanel(){
           <div>🎨 ${escapeHtml(s.club || '미가입')}</div>
           <div>🏥 ${healthCellHtml(s, '건강메모 없음')}</div>
           <div>📜 ${((s.certificates || []).length)}개 · 🏅 ${((s.awards || []).length)}건 · 🧭 ${((s.consultLogs || []).length)}회</div>
+          ${(s.fieldTrips || []).length ? `<div>🧳 체험학습 ${summarizeFieldTrips(s.fieldTrips).total}/${FIELD_TRIP_ANNUAL_LIMIT}일</div>` : ''}
         </div>
       </div>
     `;
@@ -4516,6 +4524,7 @@ function renderStudents(){
           <p>🧹 ${escapeHtml(s.cleaningArea)||'미지정'}</p>
           <p>🎨 ${escapeHtml(s.club)||'미가입'}</p>
           <p>🏅 수상 ${(s.awards||[]).length}건 · 📜 자격증 ${(s.certificates||[]).length}건</p>
+          ${(s.fieldTrips||[]).length ? `<p class="${summarizeFieldTrips(s.fieldTrips).warnings.length ? 'text-brick font-semibold' : ''}">🧳 체험학습 ${summarizeFieldTrips(s.fieldTrips).total}/${FIELD_TRIP_ANNUAL_LIMIT}일</p>` : ''}
         </div>
       </div>`;
   }).join('') : `<p class="text-gray-400 col-span-full">${studentsCache.length ? '검색 결과가 없습니다.' : '등록된 학생이 없습니다. 위 붙여넣기 도구나 + 학생 추가로 등록해주세요.'}</p>`;
@@ -5377,6 +5386,102 @@ function commitStudentBulk(){
 }
 
 /* ============================================================
+   교외 체험학습 — 학생별 사용일수 누적
+============================================================ */
+const FIELD_TRIP_TYPE_OPTIONS = ['국내', '국외'];
+const FIELD_TRIP_SEMESTER_OPTIONS = ['1학기', '2학기'];
+const FIELD_TRIP_ANNUAL_LIMIT = 10;
+const FIELD_TRIP_DOMESTIC_SEMESTER_LIMIT = 5;
+const FIELD_TRIP_OVERSEAS_LIMIT = 10;
+function countWeekdays(startStr, endStr){
+  if (!startStr || !endStr) return 0;
+  const start = new Date(startStr + 'T00:00:00');
+  const end = new Date(endStr + 'T00:00:00');
+  if (isNaN(start) || isNaN(end) || end < start) return 0;
+  let count = 0;
+  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)){
+    const dow = d.getDay();
+    if (dow !== 0 && dow !== 6) count++;
+  }
+  return count;
+}
+// 주말만 빼고 계산한다(등록된 학사 휴일 달력이 이 앱엔 없어서) — 공휴일이 껴 있으면
+// 교사가 일수 칸을 직접 고치면 된다.
+function summarizeFieldTrips(trips){
+  const domesticBySemester = {};
+  let domesticTotal = 0, overseasTotal = 0, overseasCount = 0;
+  (trips||[]).forEach(t=>{
+    const days = Number(t.days) || 0;
+    if (t.type === '국외'){
+      overseasTotal += days;
+      overseasCount++;
+    } else {
+      domesticTotal += days;
+      const sem = t.semester || '학기미상';
+      domesticBySemester[sem] = (domesticBySemester[sem]||0) + days;
+    }
+  });
+  const total = domesticTotal + overseasTotal;
+  const warnings = [];
+  Object.keys(domesticBySemester).forEach(sem=>{
+    if (domesticBySemester[sem] > FIELD_TRIP_DOMESTIC_SEMESTER_LIMIT) warnings.push(`국내 ${sem} ${domesticBySemester[sem]}일 (한도 ${FIELD_TRIP_DOMESTIC_SEMESTER_LIMIT}일)`);
+  });
+  if (overseasCount > 1) warnings.push(`국외 ${overseasCount}회 (연 1회 초과)`);
+  (trips||[]).forEach(t=>{
+    if (t.type === '국외' && (Number(t.days)||0) > FIELD_TRIP_OVERSEAS_LIMIT) warnings.push(`국외 1회 ${t.days}일 (한도 ${FIELD_TRIP_OVERSEAS_LIMIT}일)`);
+  });
+  if (total > FIELD_TRIP_ANNUAL_LIMIT) warnings.push(`연간 합계 ${total}일 (한도 ${FIELD_TRIP_ANNUAL_LIMIT}일)`);
+  return { domesticTotal, overseasTotal, total, warnings };
+}
+let editingFieldTripIndex = null;
+function onFieldTripRangeChange(){
+  const startEl = document.getElementById('fieldTripStart');
+  const endEl = document.getElementById('fieldTripEnd');
+  const daysEl = document.getElementById('fieldTripDays');
+  const semesterEl = document.getElementById('fieldTripSemester');
+  if (startEl && semesterEl && startEl.value){
+    const month = Number(startEl.value.slice(5, 7));
+    semesterEl.value = month >= 8 ? '2학기' : '1학기';
+  }
+  if (!startEl || !endEl || !daysEl) return;
+  if (!startEl.value || !endEl.value) return;
+  daysEl.value = String(countWeekdays(startEl.value, endEl.value));
+}
+function editFieldTrip(i){
+  editingFieldTripIndex = i;
+  renderModalContent();
+}
+function cancelFieldTripEdit(){
+  editingFieldTripIndex = null;
+  renderModalContent();
+}
+function saveFieldTrip(){
+  const s = getCurrentStudent();
+  const entry = {
+    type: document.getElementById('fieldTripType').value,
+    semester: document.getElementById('fieldTripSemester').value,
+    startDate: document.getElementById('fieldTripStart').value,
+    endDate: document.getElementById('fieldTripEnd').value,
+    days: Number(document.getElementById('fieldTripDays').value) || 0,
+    destination: document.getElementById('fieldTripDestination').value.trim(),
+  };
+  s.fieldTrips = s.fieldTrips || [];
+  const others = s.fieldTrips.filter((_, i) => i !== editingFieldTripIndex);
+  const prospective = summarizeFieldTrips([...others, entry]);
+  if (prospective.warnings.length && !confirm(`이 기록을 저장하면 다음 한도를 넘어요:\n- ${prospective.warnings.join('\n- ')}\n그래도 저장할까요?`)) return;
+  if (editingFieldTripIndex != null) s.fieldTrips[editingFieldTripIndex] = entry;
+  else s.fieldTrips.push(entry);
+  editingFieldTripIndex = null;
+  persistStudent(s); renderModalContent();
+}
+function deleteFieldTrip(i){
+  const s = getCurrentStudent();
+  s.fieldTrips.splice(i,1);
+  if (editingFieldTripIndex === i) editingFieldTripIndex = null;
+  persistStudent(s); renderModalContent();
+}
+
+/* ============================================================
    학생 상세 모달
 ============================================================ */
 let currentStudentId = null;
@@ -5385,7 +5490,8 @@ const MODAL_TABS = [
   { key: 'consult', label: '상담 일지' }, { key: 'health', label: '건강 상태' },
   { key: 'elective', label: '고교학점제' }, { key: 'cert', label: '자격증' },
   { key: 'cleaning', label: '청소 구역' }, { key: 'club', label: '동아리' },
-  { key: 'awards', label: '수상 실적' }, { key: 'sticker', label: '🏷 스티커' },
+  { key: 'awards', label: '수상 실적' }, { key: 'fieldtrip', label: '🧳 체험학습' },
+  { key: 'sticker', label: '🏷 스티커' },
 ];
 // 비밀번호를 평문으로 저장하면 settings 컬렉션은 규칙상 누구나 읽을 수 있어서(공개
 // 데이터가 섞여 있는 문서라 컬렉션 전체를 잠글 수 없음) 개발자 도구로 그대로 들여다볼 수
@@ -5743,6 +5849,49 @@ function renderModalContent(){
             <div><p class="font-semibold text-sm">${escapeHtml(a.title)}</p><p class="font-mono text-xs text-gray-400">${a.date||'-'} ${a.org? '· '+escapeHtml(a.org):''}</p></div>
             <button onclick="deleteAward(${i})" class="text-gray-300 hover:text-brick text-lg leading-none">&times;</button>
           </div>`).join('') : `<p class="text-gray-400 text-sm">등록된 수상 실적이 없습니다.</p>`}
+      </div>`;
+  }
+  else if (currentModalTab === 'fieldtrip') {
+    s.fieldTrips = s.fieldTrips || [];
+    if (editingFieldTripIndex != null && !s.fieldTrips[editingFieldTripIndex]) editingFieldTripIndex = null;
+    const sum = summarizeFieldTrips(s.fieldTrips);
+    const warnClass = sum.warnings.length ? 'text-brick' : 'text-forest-dark';
+    const editing = editingFieldTripIndex != null ? s.fieldTrips[editingFieldTripIndex] : null;
+    el.innerHTML = `
+      <div class="mb-3 p-3 rounded-lg bg-card border border-gray-200">
+        <p class="font-semibold text-sm ${warnClass}">국내 ${sum.domesticTotal}일 · 국외 ${sum.overseasTotal}일 · 합계 ${sum.total}/${FIELD_TRIP_ANNUAL_LIMIT}일</p>
+        ${sum.warnings.length
+          ? `<ul class="list-disc pl-4 text-xs text-brick mt-1">${sum.warnings.map(w=>`<li>${escapeHtml(w)}</li>`).join('')}</ul>`
+          : `<p class="text-xs text-gray-400 mt-1">한도 내 사용 중이에요 (국내 학기당 ${FIELD_TRIP_DOMESTIC_SEMESTER_LIMIT}일, 국외 연 1회 최대 ${FIELD_TRIP_OVERSEAS_LIMIT}일, 연간 합계 ${FIELD_TRIP_ANNUAL_LIMIT}일).</p>`}
+      </div>
+      ${editing ? `<p class="text-xs text-forest-dark font-semibold mb-2">기존 기록을 수정하는 중이에요.</p>` : ''}
+      <div class="grid grid-cols-2 gap-2 mb-2">
+        <select id="fieldTripType" class="border border-gray-300 rounded-lg px-3 py-2 text-sm">
+          ${FIELD_TRIP_TYPE_OPTIONS.map(t=>`<option value="${escapeAttr(t)}" ${editing && editing.type===t?'selected':''}>${escapeHtml(t)}</option>`).join('')}
+        </select>
+        <select id="fieldTripSemester" class="border border-gray-300 rounded-lg px-3 py-2 text-sm">
+          ${FIELD_TRIP_SEMESTER_OPTIONS.map(t=>`<option value="${escapeAttr(t)}" ${editing && editing.semester===t?'selected':''}>${escapeHtml(t)}</option>`).join('')}
+        </select>
+        <input id="fieldTripStart" type="date" value="${escapeAttr(editing?(editing.startDate||''):'')}" class="border border-gray-300 rounded-lg px-3 py-2 text-sm" oninput="onFieldTripRangeChange()">
+        <input id="fieldTripEnd" type="date" value="${escapeAttr(editing?(editing.endDate||''):'')}" class="border border-gray-300 rounded-lg px-3 py-2 text-sm" oninput="onFieldTripRangeChange()">
+      </div>
+      <div class="flex gap-2 mb-2">
+        <input id="fieldTripDays" value="${escapeAttr(editing?String(editing.days||0):'')}" placeholder="일수(자동계산, 직접 수정 가능)" class="w-40 border border-gray-300 rounded-lg px-3 py-2 text-sm">
+        <input id="fieldTripDestination" value="${escapeAttr(editing?(editing.destination||''):'')}" placeholder="목적지/사유 (선택)" class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm">
+      </div>
+      <div class="flex gap-2">
+        <button onclick="saveFieldTrip()" class="bg-forest text-white px-4 py-2 rounded-lg text-sm font-semibold">${editing?'수정 완료':'등록'}</button>
+        ${editing ? `<button onclick="cancelFieldTripEdit()" class="text-sm text-gray-400 hover:underline">취소</button>` : ''}
+      </div>
+      <div class="space-y-2 mt-4">
+        ${s.fieldTrips.length ? s.fieldTrips.map((t,i) => `
+          <div class="bg-card border ${editingFieldTripIndex===i?'border-forest':'border-gray-200'} rounded-lg px-3 py-2 flex justify-between items-center">
+            <div><p class="font-semibold text-sm">${escapeHtml(t.type)} · ${escapeHtml(t.semester||'')}</p><p class="font-mono text-xs text-gray-400">${escapeHtml(t.startDate||'?')} ~ ${escapeHtml(t.endDate||'?')} (${escapeHtml(String(t.days||0))}일)${t.destination?' · '+escapeHtml(t.destination):''}</p></div>
+            <div class="flex items-center gap-2 shrink-0">
+              <button onclick="editFieldTrip(${i})" class="text-xs font-semibold text-forest-dark hover:underline">수정</button>
+              <button onclick="deleteFieldTrip(${i})" class="text-gray-300 hover:text-brick text-lg leading-none">&times;</button>
+            </div>
+          </div>`).join('') : `<p class="text-gray-400 text-sm">등록된 체험학습 기록이 없습니다.</p>`}
       </div>`;
   }
   else if (currentModalTab === 'sticker') {
@@ -6164,7 +6313,7 @@ function renderNotices(){
       <p class="font-mono text-xs text-gray-400 mb-2">${noticeDateTimeLabel(n)}</p>
       ${n.popupFrom && n.popupUntil ? `<p class="text-[11px] text-blue-500 font-semibold mb-1">📢 팝업 노출 기간: ${n.popupFrom} ~ ${n.popupUntil}</p>` : ''}
       <p class="text-base text-gray-700 whitespace-pre-line">${escapeHtml(n.content)}</p>
-      ${n.imageUrl ? `<img src="${n.imageUrl}" class="w-full max-w-sm rounded-lg border border-gray-200 mt-2" alt="">` : ''}
+      ${n.imageUrl ? `<img src="${escapeAttr(n.imageUrl)}" class="w-full max-w-sm rounded-lg border border-gray-200 mt-2" alt="">` : ''}
       <div class="flex gap-1.5 mt-3 flex-wrap">
         ${(n.tags||[]).map(t => `<span class="text-xs bg-amber-light text-amber px-2 py-0.5 rounded-full">#${escapeHtml(t)}</span>`).join('')}
       </div>
