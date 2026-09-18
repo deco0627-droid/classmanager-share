@@ -2506,7 +2506,7 @@ function renderCounselingSlots(){
                   <span class="truncate">${escapeHtml(s.studentName)} 학생 · 학부모 ${escapeHtml(s.parentName)}${s.notes ? ` · ${escapeHtml(s.notes)}` : ''}</span>
                 </div>
                 <div class="flex items-center gap-2 shrink-0 ml-2">
-                  <button onclick="toggleCounselingLog('${s.id}')" class="flex items-center gap-1 text-xs ${s.resultNote ? 'text-forest-dark font-semibold' : 'text-gray-300 hover:text-forest-dark'}"><span class="text-xl leading-none">📝</span>${s.resultNote ? '상담 기록 완료' : '상담 기록'}</button>
+                  <button onclick="toggleCounselingLog('${s.id}')" class="flex items-center gap-1 text-xs ${s.resultNote ? 'text-forest-dark font-semibold' : 'text-gray-300 hover:text-forest-dark'}"><span class="text-xl leading-none">📝</span>${s.resultNote ? '상담 기록 완료' : '상담 기록'} <span class="text-[10px]">${openCounselLogId === s.id ? '▾' : '▸'}</span></button>
                   <button onclick="editCounselingSlot('${s.id}')" class="text-gray-300 hover:text-forest-dark text-xs">수정</button>
                   <button onclick="deleteCounselingSlot('${s.id}')" class="text-gray-300 hover:text-brick text-xs">삭제</button>
                 </div>
@@ -2519,7 +2519,7 @@ function renderCounselingSlots(){
                     <button onclick="toggleCounselingLog('${s.id}')" class="text-xs border border-gray-300 px-3 py-1 rounded-full hover:bg-gray-50">닫기</button>
                   </div>
                 </div>
-              ` : (s.resultNote ? `<p class="text-xs text-gray-500 mt-1.5 whitespace-pre-line">📝 ${escapeHtml(s.resultNote)}</p>` : '')}
+              ` : ''}
             </div>`).join('')}
         </div>
       </div>`;
