@@ -6182,7 +6182,7 @@ function loadLiveNoteHistory(){
     listEl.innerHTML = items.length ? items.map(n => `
       <div class="flex items-center justify-between gap-2 border-b border-gray-100 pb-1.5">
         <span class="truncate flex-1 text-gray-600">${n.imageUrl ? '🖼 ' : ''}${escapeHtml(n.text || '(이미지만)')}</span>
-        <button onclick="resendLiveNote(${JSON.stringify(n.text || '')}, ${JSON.stringify(n.imageUrl || null)})" class="shrink-0 text-xs border border-gray-300 px-2 py-1 rounded-full hover:bg-gray-50">🔁 다시 보내기</button>
+        <button onclick="resendLiveNote(${escapeAttr(JSON.stringify(n.text || ''))}, ${escapeAttr(JSON.stringify(n.imageUrl || null))})" class="shrink-0 text-xs border border-gray-300 px-2 py-1 rounded-full hover:bg-gray-50">🔁 다시 보내기</button>
       </div>`).join('') : '<p class="text-gray-400">보낸 기록이 없습니다.</p>';
   }).catch(err => { listEl.textContent = '불러오기 실패: ' + err.message; });
 }
