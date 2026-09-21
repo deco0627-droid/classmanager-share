@@ -6248,6 +6248,16 @@ function renderAfterschoolAttendanceStats(){
       </tbody>
     </table>`;
 }
+// 날짜 칸에 마우스를 올리면 그날 결석·지각 등이 있었던 학생과 사유를 바로 볼 수 있게 한다
+// (한 명씩 칸을 확인하지 않아도 그날 무슨 일이 있었는지 한눈에 알 수 있음).
+function afterschoolSessionIssuesTooltip(sessionId){
+  const records = afterschoolAttendanceCache[sessionId];
+  if (!records) return '';
+  const lines = Object.entries(records)
+    .filter(([, r]) => r.status && r.status !== '출석')
+    .map(([name, r]) => `${AFTERSCHOOL_STATUS_ICON[r.status] || ''} ${name} - ${r.status}${r.reason ? ' (' + r.reason + ')' : ''}`);
+  return lines.join('\n');
+}
 function renderAfterschoolAttendanceTable(){
   const el = document.getElementById('afterschoolAttendanceTable');
   if (!el) return;
@@ -6262,7 +6272,10 @@ function renderAfterschoolAttendanceTable(){
       <thead>
         <tr>
           <th class="sticky left-0 bg-card border border-gray-200 px-3 py-2.5 text-left whitespace-nowrap">학생</th>
-          ${sessions.map(s => `<th class="border border-gray-200 px-3 py-2.5 whitespace-nowrap font-mono text-gray-500">${afterschoolDateLabel(s.date)}</th>`).join('')}
+          ${sessions.map(s => {
+            const tip = afterschoolSessionIssuesTooltip(s.id);
+            return `<th class="border border-gray-200 px-3 py-2.5 whitespace-nowrap font-mono text-gray-500${tip ? ' cursor-help' : ''}"${tip ? ` title="${escapeAttr(tip)}"` : ''}>${afterschoolDateLabel(s.date)}</th>`;
+          }).join('')}
         </tr>
       </thead>
       <tbody>
