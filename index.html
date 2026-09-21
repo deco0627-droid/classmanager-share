@@ -2211,12 +2211,20 @@ function enablePushNotifications(){
     });
   }
 }
+// 작은 구석 토스트라 발송 결과(특히 몇 명에게 갔는지)를 놓치기 쉬웠다 — 화면 중앙에 크게,
+// 직접 닫을 때까지(X 버튼 또는 바깥 빈 곳 클릭) 계속 보이는 모달로 바꾼다.
 function showInAppPushToast(title, body){
-  const el = document.createElement('div');
-  el.className = 'fixed top-4 left-1/2 -translate-x-1/2 bg-ink text-white px-4 py-3 rounded-xl shadow-lg z-[80] max-w-sm text-sm';
-  el.innerHTML = `<p class="font-semibold mb-0.5">${escapeHtml(title)}</p><p class="text-xs text-white/80">${escapeHtml(body)}</p>`;
-  document.body.appendChild(el);
-  setTimeout(() => el.remove(), 5000);
+  const overlay = document.createElement('div');
+  overlay.className = 'fixed inset-0 bg-black/50 z-[90] flex items-center justify-center p-4';
+  overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+  overlay.innerHTML = `
+    <div class="bg-ink text-white rounded-2xl shadow-xl w-full max-w-sm p-6 text-center relative">
+      <button onclick="this.closest('.fixed').remove()" class="absolute top-2 right-3 text-white/50 hover:text-white text-2xl leading-none">&times;</button>
+      <p class="font-semibold text-lg mb-2">${escapeHtml(title)}</p>
+      <p class="text-sm text-white/80">${escapeHtml(body)}</p>
+    </div>`;
+  document.body.appendChild(overlay);
+  setTimeout(() => overlay.remove(), 12000);
 }
 // 공지 등록/수정 시 팝업 알림이 켜져 있거나, 포스트잇을 보낼 때 실제 휴대폰 푸시를 보낸다.
 // 결과(성공/실패 이유)를 화면에 토스트로 바로 보여줘서, 조용히 실패하는 일이 없게 한다.
