@@ -35,5 +35,7 @@ service cloud.firestore {
     match /classes/{classId}/tetrisScores/{doc}   { allow read, create: if true; allow update, delete: if isClassTeacher(classId); }
     match /classes/{classId}/counselingSlots/{doc} { allow read, write: if isClassTeacher(classId); }
     match /classes/{classId}/liveNotes/{doc}      { allow read, write: if isClassTeacher(classId); }
+    match /classes/{classId}/afterschoolSchedule/{doc}    { allow read: if true; allow write: if isClassTeacher(classId); }
+    match /classes/{classId}/afterschoolAttendance/{doc}  { allow read: if true; allow write: if isClassTeacher(classId); }
   }
 }

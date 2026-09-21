@@ -122,6 +122,10 @@ export async function onRequestPost(context) {
     if (!title) {
       return new Response(JSON.stringify({ error: '제목이 없습니다.' }), { status: 400 });
     }
+    // names가 오면(예: 방과후수업 참여 학생 명단) 전체가 아니라 그 이름들로 등록된 기기에만 보낸다.
+    const targetNames = Array.isArray(body.names) && body.names.length
+      ? new Set(body.names.map(n => String(n).replace(/\s+/g, '')))
+      : null;
 
     const saJson = env.FIREBASE_SERVICE_ACCOUNT_KEY;
     if (!saJson) {
@@ -143,12 +147,19 @@ export async function onRequestPost(context) {
       { headers: { Authorization: `Bearer ${accessToken}` } }
     );
     const listData = await listRes.json();
-    const tokens = (listData.documents || [])
-      .map(doc => firestoreValueToJs(doc.fields && doc.fields.token))
-      .filter(Boolean);
+    let tokens = (listData.documents || [])
+      .map(doc => ({
+        token: firestoreValueToJs(doc.fields && doc.fields.token),
+        name: firestoreValueToJs(doc.fields && doc.fields.name),
+      }))
+      .filter(t => t.token);
+    if (targetNames) {
+      tokens = tokens.filter(t => t.name && targetNames.has(String(t.name).replace(/\s+/g, '')));
+    }
+    tokens = tokens.map(t => t.token);
 
     if (!tokens.length) {
-      return new Response(JSON.stringify({ sent: 0, message: '등록된 알림 대상 기기가 없습니다.' }), {
+      return new Response(JSON.stringify({ sent: 0, total: 0, message: targetNames ? '등록된 이름과 일치하는 기기가 없습니다.' : '등록된 알림 대상 기기가 없습니다.' }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
       });

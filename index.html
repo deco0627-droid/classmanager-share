@@ -631,6 +631,23 @@ service cloud.firestore {
     </div>
   </section>
 
+  <!-- ===================== 방과후수업 (비밀번호 필요) ===================== -->
+  <section id="view-afterschool" class="view hidden fade-in">
+    <span class="badge-private">🔒 비밀번호 필요</span>
+    <h1 class="font-display text-2xl mt-1 mb-3">🏫 방과후수업</h1>
+    <div id="afterschoolCourseIntro" class="hidden bg-card border border-gray-200 rounded-xl p-4 mb-5"></div>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+      <div class="assignment-layout-card p-5">
+        <h2 class="font-display text-lg mb-3 text-forest-dark">🧑‍🎓 참여 학생 명단</h2>
+        <div id="afterschoolStudentsView" class="space-y-1.5"></div>
+      </div>
+      <div class="assignment-layout-card p-5">
+        <h2 class="font-display text-lg mb-3 text-forest-dark">🗓 수업 일정</h2>
+        <div id="afterschoolScheduleView" class="space-y-1.5"></div>
+      </div>
+    </div>
+  </section>
+
   <!-- ===================== 위치기반 등교 확인 (QR로 접속, 로그인 불필요) ===================== -->
   <section id="view-checkin" class="view hidden fade-in">
     <span class="badge-public">전체 공개</span>
@@ -1099,6 +1116,100 @@ service cloud.firestore {
           <div id="counselingSlotList" class="space-y-3"></div>
         </div>
       </div>
+      <div class="bg-card border border-gray-200 rounded-xl p-5 lg:col-span-2" data-admin-card="afterschool">
+        <button id="adminCollapseBtn_afterschool" onclick="toggleAdminCollapse('afterschool')" aria-expanded="false" class="admin-collapse-btn">
+          <h2 class="font-display text-lg text-forest-dark">🏫 방과후수업 관리</h2>
+          <span class="admin-collapse-chevron">▶</span>
+        </button>
+        <div id="adminCollapseBody_afterschool" class="hidden mt-3">
+          <p class="text-xs text-gray-500 mb-3">담임 학급과 무관하게 참여하는 학생들만 따로 관리해요. "🔒 비밀번호 필요" 화면에서 참여 학생만 명단·일정을 볼 수 있고, 알림도 이 명단에 등록된 학생에게만 따로 보낼 수 있어요.</p>
+
+          <label class="text-xs font-semibold text-gray-500 block mb-1">방과후수업 비밀번호 설정</label>
+          <p class="text-[11px] text-gray-400 mb-2">기본값은 <b>after1234</b>예요. 암호화해서 저장하므로 현재 값은 보이지 않아요 — 바꾸고 싶을 때만 새 비밀번호를 입력하고 저장하세요. 복구용 이메일은 위 건강 비밀번호 설정과 같은 걸 사용해요.</p>
+          <div class="flex gap-2 mb-2">
+            <input id="afterschoolPasswordField" type="password" placeholder="새 비밀번호 입력 (안 바꾸면 비워두세요)" class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm">
+            <button onclick="saveAfterschoolPassword()" class="bg-forest text-white px-4 rounded-lg text-sm font-semibold">저장</button>
+          </div>
+          <button onclick="recoverAfterschoolPassword()" class="mb-4 text-xs text-forest-dark font-semibold hover:underline">비밀번호를 잊었어요 — 복구 메일 보내기</button>
+
+          <div class="mb-4 pb-3 border-b border-gray-100">
+            <label class="text-xs font-semibold text-gray-500 block mb-1">과정 소개 (학생 화면 맨 위에 표시)</label>
+            <input id="afterschoolCourseTitle" placeholder="과정명 (예: 두 번은 없다! 전기기능사 실기반)" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mb-2">
+            <textarea id="afterschoolCourseInfo" rows="2" placeholder="운영 목적·대상·요일/시간 등 간단한 소개" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mb-2"></textarea>
+            <button onclick="saveAfterschoolCourseInfo()" class="bg-forest text-white px-4 py-1.5 rounded-lg text-sm font-semibold">저장</button>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div>
+              <label class="text-xs font-semibold text-gray-500 block mb-1">참여 학생 명단</label>
+              <p class="text-[11px] text-gray-400 mb-1">화면에는 학년과 가운데 글자를 가린 이름만 보여요(예: 1학년 강0준). 알림 발송을 위해 실제 이름은 관리자에게만 그대로 보입니다.</p>
+              <div class="flex gap-2 mb-2">
+                <select id="afterschoolStudentGrade" class="border border-gray-300 rounded-lg px-2 py-2 text-sm">
+                  <option value="1학년">1학년</option>
+                  <option value="2학년">2학년</option>
+                  <option value="3학년">3학년</option>
+                </select>
+                <input id="afterschoolStudentInput" placeholder="학생 이름" onkeydown="if(event.key==='Enter') addAfterschoolStudent()" class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                <button onclick="addAfterschoolStudent()" class="bg-forest text-white px-4 rounded-lg text-sm font-semibold shrink-0">추가</button>
+              </div>
+              <div id="afterschoolStudentsAdmin" class="space-y-1.5 mb-3"></div>
+              <details>
+                <summary class="text-xs text-forest-dark font-semibold cursor-pointer hover:underline">📋 명단 한번에 붙여넣기</summary>
+                <p class="text-[11px] text-gray-400 mt-2 mb-1">계획서의 "수강 명단" 표를 그대로 복사해서 붙여넣으세요. 한 줄에 "학번 이름"(예: 1501 강범준) — 학번의 맨 앞자리가 학년으로 자동 등록되고, 학번 자체는 저장하지 않아요.</p>
+                <textarea id="afterschoolStudentBulkInput" rows="4" placeholder="1501 강범준&#10;1601 김도윤&#10;..." class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mb-2 font-mono"></textarea>
+                <button onclick="bulkAddAfterschoolStudents()" class="w-full bg-forest text-white py-1.5 rounded-lg text-sm font-semibold hover:bg-forest-dark">일괄 등록</button>
+              </details>
+            </div>
+            <div>
+              <label class="text-xs font-semibold text-gray-500 block mb-1">수업 일정</label>
+              <div class="grid grid-cols-3 gap-1.5 mb-2">
+                <input id="afterschoolSchedDate" type="date" class="border border-gray-300 rounded-lg px-2 py-2 text-sm col-span-1">
+                <input id="afterschoolSchedTime" type="time" value="15:30" class="border border-gray-300 rounded-lg px-2 py-2 text-sm col-span-1">
+                <input id="afterschoolSchedTitle" placeholder="내용 (예: 로봇반)" class="border border-gray-300 rounded-lg px-2 py-2 text-sm col-span-1">
+              </div>
+              <button onclick="addAfterschoolSchedule()" class="w-full mb-2 bg-forest text-white py-1.5 rounded-lg text-sm font-semibold hover:bg-forest-dark">일정 추가</button>
+              <div id="afterschoolScheduleAdmin" class="space-y-1.5 max-h-64 overflow-y-auto pr-1 mb-3"></div>
+              <details>
+                <summary class="text-xs text-forest-dark font-semibold cursor-pointer hover:underline">📋 일정 한번에 붙여넣기</summary>
+                <p class="text-[11px] text-gray-400 mt-2 mb-1">계획서의 "수업 계획" 표 내용을 줄마다 날짜와 함께 붙여넣으세요(예: "9/14 OT 회로의 구성과 점검"). 날짜를 자동으로 인식해서 목록으로 미리 보여드려요.</p>
+                <textarea id="afterschoolScheduleBulkInput" rows="4" placeholder="9/14 OT 회로의 구성과 점검&#10;9/17 제어판 제어판 구성&#10;..." class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mb-2 font-mono"></textarea>
+                <div class="flex items-center gap-2 mb-2">
+                  <label class="text-xs text-gray-500 shrink-0">공통 시간</label>
+                  <input id="afterschoolScheduleBulkTime" type="time" value="15:40" class="border border-gray-300 rounded-lg px-2 py-1.5 text-sm">
+                  <button onclick="previewAfterschoolScheduleBulk()" class="text-xs bg-card border border-gray-300 px-3 py-1.5 rounded-lg hover:bg-gray-50 shrink-0">미리보기</button>
+                </div>
+                <div id="afterschoolScheduleBulkPreview" class="text-xs mb-2"></div>
+                <button onclick="commitAfterschoolScheduleBulk()" class="w-full bg-forest text-white py-1.5 rounded-lg text-sm font-semibold hover:bg-forest-dark">일괄 등록</button>
+              </details>
+            </div>
+          </div>
+
+          <div class="mt-4 pt-3 border-t border-gray-100">
+            <p class="text-xs font-semibold text-gray-500 mb-2">📈 출결 통계 (학생별 요약)</p>
+            <div id="afterschoolAttendanceStats" class="overflow-x-auto mb-4"></div>
+            <p class="text-xs font-semibold text-gray-500 mb-2">📊 출결 현황 (학생 × 날짜 한눈에 보기)</p>
+            <div id="afterschoolAttendanceTable" class="overflow-x-auto"></div>
+          </div>
+
+          <div class="mt-4 pt-3 border-t border-gray-100">
+            <p class="text-xs font-semibold text-gray-500 mb-2">참여 학생에게만 알림 보내기</p>
+            <div class="flex gap-2 mb-2">
+              <input id="afterschoolPushTitle" placeholder="제목 (예: 방과후수업 안내)" class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm">
+            </div>
+            <div class="flex gap-2">
+              <textarea id="afterschoolPushBody" rows="2" placeholder="내용" class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm"></textarea>
+              <button onclick="sendAfterschoolPush()" class="bg-amber text-white px-4 rounded-lg text-sm font-semibold hover:opacity-90 shrink-0">보내기</button>
+            </div>
+            <p class="text-[11px] text-gray-400 mt-1">위 명단에 등록된 이름과, 학생이 알림 켤 때 등록한 이름이 일치해야 받을 수 있어요(담임 학급 전체가 아니라 이 명단에 있는 학생에게만 가요).</p>
+          </div>
+
+          <div class="mt-4 pt-3 border-t border-gray-100">
+            <p class="text-xs font-semibold text-brick mb-1">🏁 학기 종료</p>
+            <p class="text-[11px] text-gray-400 mb-2">학기가 끝나면 눌러주세요. 참여 학생 명단·수업 일정·출결 기록이 전부 삭제되고 상단 메뉴에서도 "방과후수업" 탭이 사라져요(저장공간을 아끼려고 남겨두지 않고 지워요). 다음 학기 걸 다시 등록하면 탭이 자동으로 다시 나타납니다.</p>
+            <button onclick="endAfterschoolTerm()" class="w-full border border-brick/40 text-brick py-1.5 rounded-lg text-sm font-semibold hover:bg-brick/10">이번 학기 방과후수업 종료·초기화</button>
+          </div>
+        </div>
+      </div>
       <div class="bg-card border border-gray-200 rounded-xl p-5" data-admin-card="navOrder">
         <button id="adminCollapseBtn_navOrder" onclick="toggleAdminCollapse('navOrder')" aria-expanded="false" class="admin-collapse-btn">
           <h2 class="font-display text-lg text-forest-dark">🧭 메뉴 순서 편집</h2>
@@ -1305,6 +1416,17 @@ service cloud.firestore {
       <button onclick="cancelPasswordPrompt()" class="flex-1 border border-gray-300 py-2.5 rounded-lg text-sm font-semibold hover:bg-gray-50">취소</button>
       <button onclick="confirmPasswordPrompt()" class="flex-1 bg-forest text-white py-2.5 rounded-lg text-sm font-semibold hover:bg-forest-dark">확인</button>
     </div>
+  </div>
+</div>
+
+<div id="afterschoolAttendanceModal" class="hidden fixed inset-0 bg-ink/60 z-[70] flex items-center justify-center p-4" onclick="if(event.target===this) closeAfterschoolAttendance()">
+  <div class="bg-card rounded-2xl shadow-xl w-full max-w-md p-5 max-h-[85vh] overflow-y-auto">
+    <div class="flex items-center justify-between mb-3">
+      <h3 id="afterschoolAttendanceTitle" class="font-display text-lg text-forest-dark">출결 확인</h3>
+      <button onclick="closeAfterschoolAttendance()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+    </div>
+    <div id="afterschoolAttendanceList" class="space-y-2"></div>
+    <button onclick="saveAfterschoolAttendance()" class="w-full mt-4 bg-forest text-white py-2 rounded-lg text-sm font-semibold hover:bg-forest-dark">저장</button>
   </div>
 </div>
 
@@ -1722,7 +1844,7 @@ function timeAgo(ts){
 const STICKY_BG = ['#FFF6D8', '#DCEAE1', '#F1D9D2', '#E7E9F5', '#FCE8D6'];
 function linkifyText(escapedText){
   return escapedText.replace(/(https?:\/\/[^\s<]+)/g, url =>
-    `<a href="${url}" target="_blank" onclick="event.stopPropagation()" class="text-forest-dark underline break-all font-semibold">${url}</a>`);
+    `<a href="${url}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" class="text-forest-dark underline break-all font-semibold">${url}</a>`);
 }
 function renderWall(){
   const allPosts = isTeacher ? [...wallPostsPublicCache, ...wallPostsPrivateCache] : wallPostsPublicCache;
@@ -2098,13 +2220,13 @@ function showInAppPushToast(title, body){
 }
 // 공지 등록/수정 시 팝업 알림이 켜져 있거나, 포스트잇을 보낼 때 실제 휴대폰 푸시를 보낸다.
 // 결과(성공/실패 이유)를 화면에 토스트로 바로 보여줘서, 조용히 실패하는 일이 없게 한다.
-function sendPushNotification(title, content){
+function sendPushNotification(title, content, names){
   if (!auth.currentUser) { showInAppPushToast('푸시 발송 실패', '로그인이 필요합니다.'); return; }
   auth.currentUser.getIdToken().then(idToken =>
     fetch('/api/send-notification', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + idToken },
-      body: JSON.stringify({ title, body: content, classId: currentClassId }),
+      body: JSON.stringify(names && names.length ? { title, body: content, classId: currentClassId, names } : { title, body: content, classId: currentClassId }),
     })
   )
     .then(res => res.json().catch(() => ({})).then(data => ({ ok: res.ok, data })))
@@ -2216,6 +2338,8 @@ function continueBootstrapApp(){
     certExamsCache = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => (a.date||'').localeCompare(b.date||''));
     if (currentView === 'certinfo') renderCertInfo();
   });
+  startAfterschoolScheduleListener();
+  startAfterschoolAttendanceListener();
 
   auth.onAuthStateChanged(user => {
     isTeacher = !!(user && (user.email === TEACHER_EMAIL || user.email === SUPER_ADMIN_EMAIL));
@@ -2571,6 +2695,7 @@ const NAV_ITEMS = [
   { key: 'schedule', label: '시간표·학사일정' },
   { key: 'certinfo', label: '자격증 안내' },
   { key: 'photos', label: '청소구역·동아리' },
+  { key: 'afterschool', label: '방과후수업' },
   { key: 'wall', label: '담벼락' },
   { key: 'students', label: '학생 명단', teacherOnly: true },
   { key: 'admin', label: '관리자', teacherOnly: true },
@@ -2578,8 +2703,14 @@ const NAV_ITEMS = [
 function navLabel(key, fallback){
   return (settingsCache && settingsCache.navLabels && settingsCache.navLabels[key]) || fallback;
 }
+// 방과후수업은 학기 단위로 열고 닫는다 — 학기 종료 후 초기화하면 명단·일정이 비니, 그동안은
+// 메뉴에서 아예 숨겨서 "지금은 운영 안 함"을 자연스럽게 나타내고, 새 학기 것을 등록하는 순간
+// 다시 나타나게 한다.
+function hasActiveAfterschool(){
+  return afterschoolStudents().length > 0 || (afterschoolScheduleCache && afterschoolScheduleCache.length > 0);
+}
 function visibleNavItems(){
-  const pub = NAV_ITEMS.filter(n => !n.teacherOnly);
+  const pub = NAV_ITEMS.filter(n => !n.teacherOnly && (n.key !== 'afterschool' || hasActiveAfterschool()));
   const order = (settingsCache.navOrder && settingsCache.navOrder.length) ? settingsCache.navOrder : pub.map(n => n.key);
   const orderedPub = order.map(k => pub.find(n => n.key === k)).filter(Boolean);
   pub.forEach(n => { if (!orderedPub.includes(n)) orderedPub.push(n); }); // 새로 추가된 항목 뒤에 붙이기
@@ -2608,6 +2739,7 @@ const TITLE_ICONS = {
   '학사일정': '🗓️',
   '청소': '🧽',
   '동아리': '🎶',
+  '방과후': '🏫',
   '공지': '📢',
   '학생': '🧑‍🎓',
   '관리자': '⚙️',
@@ -2676,6 +2808,7 @@ function renderView(key){
     if (key==='schedule') { renderTimetable(); renderScheduleList(); renderScheduleCalendar(); }
     if (key==='certinfo') renderCertInfo();
     if (key==='photos') requireAssignmentPassword(renderPhotosView);
+    if (key==='afterschool') requireAfterschoolPassword(renderAfterschoolView);
     if (key==='wall') { startWallPublicPolling(); renderWall(); }
     if (key==='checkin') renderCheckinView();
     if (key==='students') renderStudents();
@@ -4068,10 +4201,10 @@ function renderCertInfo(){
     </div>`).join('') : `<p class="text-gray-400 text-sm">등록된 자격증 일정이 없습니다.</p>`;
 
   const certLinksHtml = settingsCache.certificateTypes.map(t => `
-      <a href="${escapeAttr(certLinkFor(t))}" target="_blank"
+      <a href="${escapeAttr(certLinkFor(t))}" target="_blank" rel="noopener noreferrer"
          class="text-xs bg-forest-light text-forest-dark px-3 py-1.5 rounded-full hover:opacity-80">${escapeHtml(t)} 🔍</a>`).join('');
   const extraLinksHtml = (settingsCache.extraCertLinks || []).map(l => `
-      <a href="${escapeAttr(l.url)}" target="_blank"
+      <a href="${escapeAttr(l.url)}" target="_blank" rel="noopener noreferrer"
          class="text-xs bg-amber-light text-amber px-3 py-1.5 rounded-full hover:opacity-80">${escapeHtml(l.label)} 🔗</a>`).join('');
   document.getElementById('certQnetLinks').innerHTML = (certLinksHtml + extraLinksHtml)
     || `<p class="text-gray-400 text-sm">등록된 자격증 종류가 없습니다. 관리자 탭에서 추가해주세요.</p>`;
@@ -5728,6 +5861,540 @@ async function saveAssignmentPassword(){
   document.getElementById('assignmentPasswordField').value = '';
   alert('비밀번호가 저장되었습니다.');
 }
+// 방과후수업은 담임 학급과 무관하게(다른 학년·반 학생도 섞여서) 운영될 수 있어서, 학생 명단·
+// 일정 화면은 별도 비밀번호로 가리고, 알림도 이 명단에 등록된 학생에게만 따로 보낼 수 있게 한다.
+async function getAfterschoolPasswordHash(){
+  return (settingsCache && settingsCache.afterschoolPasswordHash) || await getDefaultPwHash('after1234');
+}
+const AFTERSCHOOL_PW_STORAGE_KEY = 'cm_afterschoolPwUnlocked';
+function isAfterschoolUnlocked(){
+  return localStorage.getItem(AFTERSCHOOL_PW_STORAGE_KEY) === '1';
+}
+function requireAfterschoolPassword(onSuccess){
+  if (isTeacher || isAfterschoolUnlocked()) { onSuccess(); return; }
+  openPasswordPrompt('방과후수업 비밀번호를 입력하세요.', async (input) => {
+    if (!input) { switchView('dashboard'); return; }
+    const [expected, actual] = await Promise.all([getAfterschoolPasswordHash(), sha256Hex(input.trim())]);
+    if (actual !== expected) {
+      alert('비밀번호가 올바르지 않습니다.');
+      switchView('dashboard');
+      return;
+    }
+    localStorage.setItem(AFTERSCHOOL_PW_STORAGE_KEY, '1');
+    onSuccess();
+  });
+}
+async function saveAfterschoolPassword(){
+  const value = document.getElementById('afterschoolPasswordField').value.trim();
+  if (!value) return alert('새 비밀번호를 입력해주세요. 기존 비밀번호를 그대로 두려면 저장을 누르지 말고 비워두세요.');
+  const hash = await sha256Hex(value);
+  settingsCache.afterschoolPasswordHash = hash;
+  await classCol('settings').doc('general').set({ afterschoolPasswordHash: hash }, { merge: true });
+  document.getElementById('afterschoolPasswordField').value = '';
+  alert('방과후수업 비밀번호가 저장되었습니다.');
+}
+function recoverAfterschoolPassword(){
+  const email = (settingsCache && settingsCache.healthRecoveryEmail) ? String(settingsCache.healthRecoveryEmail).trim() : '';
+  if (!email) {
+    alert('복구용 이메일이 아직 설정되지 않았습니다. 관리자 설정에서 복구용 이메일을 먼저 등록해주세요.');
+    return;
+  }
+  const subject = encodeURIComponent('[학급 수첩] 방과후수업 비밀번호 재설정 안내');
+  const body = encodeURIComponent(`안녕하세요.\n\n방과후수업 비밀번호를 잊어버렸습니다.\n비밀번호는 암호화되어 저장돼 있어 그대로 확인할 수 없으니, 관리자 페이지의 "방과후수업 관리"에서 새 비밀번호로 다시 설정해주세요.\n`);
+  window.location.href = `mailto:${email}?subject=${subject}&body=${body}`;
+}
+
+// 참여 학생 명단 — 담임 학급 명단(students 컬렉션)과 별개로 관리한다. 학번 대신 학년만,
+// 실명 대신 가운데 글자를 가린 이름만 화면(학생용 페이지·관리자 목록)에 보여준다 — 다만 알림
+// 발송은 학생이 실제로 등록한 이름과 대조해야 해서, 실명(realName)은 그대로 저장해두고 표시할
+// 때만 maskKoreanName()으로 가린다.
+function maskKoreanName(name){
+  const s = String(name || '').trim();
+  if (s.length <= 1) return s;
+  if (s.length === 2) return s[0] + '0';
+  return s[0] + '0'.repeat(s.length - 2) + s[s.length - 1];
+}
+function afterschoolStudents(){
+  return (settingsCache && settingsCache.afterschoolStudents) || [];
+}
+function saveAfterschoolStudents(next){
+  settingsCache.afterschoolStudents = next;
+  classCol('settings').doc('general').set({ afterschoolStudents: next }, { merge: true });
+  renderAfterschoolStudentsAdmin();
+  renderAfterschoolAttendanceTable();
+  renderAfterschoolAttendanceStats();
+  renderNav();
+}
+let editingAfterschoolStudentIndex = null;
+function addAfterschoolStudent(){
+  const nameInput = document.getElementById('afterschoolStudentInput');
+  const gradeInput = document.getElementById('afterschoolStudentGrade');
+  const realName = nameInput.value.trim();
+  const grade = gradeInput.value;
+  if (!realName) return;
+  saveAfterschoolStudents([...afterschoolStudents(), { grade, realName }]);
+  nameInput.value = '';
+}
+function editAfterschoolStudent(i){
+  editingAfterschoolStudentIndex = i;
+  renderAfterschoolStudentsAdmin();
+}
+function cancelEditAfterschoolStudent(){
+  editingAfterschoolStudentIndex = null;
+  renderAfterschoolStudentsAdmin();
+}
+function saveEditAfterschoolStudent(i){
+  const grade = document.getElementById('editAfterschoolStudentGrade_' + i).value;
+  const realName = document.getElementById('editAfterschoolStudentName_' + i).value.trim();
+  if (!realName) return alert('이름을 입력해주세요.');
+  const list = [...afterschoolStudents()];
+  list[i] = { grade, realName };
+  editingAfterschoolStudentIndex = null;
+  saveAfterschoolStudents(list);
+}
+function removeAfterschoolStudent(i){
+  const list = [...afterschoolStudents()];
+  list.splice(i, 1);
+  saveAfterschoolStudents(list);
+}
+// 학번 앞자리(학년)+이름 형태로 한 줄씩("1501 강범준") 붙여넣으면 한 번에 등록한다.
+function bulkAddAfterschoolStudents(){
+  const textEl = document.getElementById('afterschoolStudentBulkInput');
+  const lines = textEl.value.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  const added = [];
+  lines.forEach(line => {
+    const m = line.match(/^(\d)\d*\s+(\S+)/) || line.match(/^(\S+)$/);
+    if (!m) return;
+    if (m.length === 3) added.push({ grade: m[1] + '학년', realName: m[2] });
+    else added.push({ grade: '', realName: m[1] });
+  });
+  if (!added.length) return alert('인식된 학생이 없습니다. 한 줄에 "학번 이름" 또는 "이름"으로 입력해주세요.');
+  saveAfterschoolStudents([...afterschoolStudents(), ...added]);
+  textEl.value = '';
+  alert(`${added.length}명 등록했습니다.`);
+}
+// 관리자 목록은 (마스킹된 학생용 화면과 달리) 실명을 그대로 보여준다 — 마스킹된 이름끼리는
+// 겹칠 수 있어서(예: 강범준·강태준이 둘 다 "강0준") 실제로 누구를 수정·삭제하는지, 출결이
+// 누구 건지 정확히 구분하려면 관리자에게는 실명이 필요하다.
+function afterschoolStudentAttendanceSummary(realName){
+  const sessions = afterschoolScheduleCache;
+  if (!sessions.length) return '등록된 일정이 없어요';
+  let present = 0;
+  const issues = {};
+  sessions.forEach(s => {
+    const rec = (afterschoolAttendanceCache[s.id] || {})[realName];
+    if (!rec) return;
+    if (rec.status === '출석') present++;
+    else issues[rec.status] = (issues[rec.status] || 0) + 1;
+  });
+  const issueParts = Object.entries(issues).map(([k, n]) => `${AFTERSCHOOL_STATUS_ICON[k] || ''}${n}`);
+  return `출석 ${present}/${sessions.length}${issueParts.length ? ' · ' + issueParts.join(' ') : ''}`;
+}
+function renderAfterschoolStudentsAdmin(){
+  const el = document.getElementById('afterschoolStudentsAdmin');
+  if (!el) return;
+  const list = afterschoolStudents();
+  el.innerHTML = list.length ? list.map((s, i) => {
+    if (editingAfterschoolStudentIndex === i) {
+      return `
+      <div class="flex items-center gap-1.5 bg-card border border-forest rounded-lg px-2.5 py-1.5">
+        <input id="editAfterschoolStudentGrade_${i}" value="${escapeAttr(s.grade || '')}" placeholder="학년" class="w-16 border border-gray-200 rounded px-1.5 py-1 text-xs">
+        <input id="editAfterschoolStudentName_${i}" value="${escapeAttr(s.realName || '')}" placeholder="이름" class="w-20 border border-gray-200 rounded px-1.5 py-1 text-xs">
+        <button onclick="saveEditAfterschoolStudent(${i})" class="text-xs font-semibold text-forest-dark shrink-0">저장</button>
+        <button onclick="cancelEditAfterschoolStudent()" class="text-xs text-gray-400 shrink-0">취소</button>
+      </div>`;
+    }
+    return `
+    <div class="flex items-center justify-between bg-card border border-gray-200 rounded-lg px-3 py-2">
+      <div class="min-w-0">
+        <p class="font-semibold text-sm">${escapeHtml(s.grade || '')} ${escapeHtml(s.realName)}</p>
+        <p class="text-[11px] text-gray-400">${escapeHtml(afterschoolStudentAttendanceSummary(s.realName))}</p>
+      </div>
+      <div class="flex items-center gap-2 shrink-0">
+        <button onclick="editAfterschoolStudent(${i})" class="text-xs font-semibold text-forest-dark hover:underline">수정</button>
+        <button onclick="removeAfterschoolStudent(${i})" class="text-gray-300 hover:text-brick text-lg leading-none">&times;</button>
+      </div>
+    </div>`;
+  }).join('') : `<p class="text-gray-400 text-sm">등록된 학생이 없습니다.</p>`;
+}
+function saveAfterschoolCourseInfo(){
+  const title = document.getElementById('afterschoolCourseTitle').value.trim();
+  const info = document.getElementById('afterschoolCourseInfo').value.trim();
+  settingsCache.afterschoolCourseTitle = title;
+  settingsCache.afterschoolCourseInfo = info;
+  classCol('settings').doc('general').set({ afterschoolCourseTitle: title, afterschoolCourseInfo: info }, { merge: true });
+  alert('과정 소개가 저장되었습니다.');
+}
+
+// 수업 일정 — 담임 학급과 무관하게 운영되는 일정이라 schedules(시간표·학사일정)와 별도 컬렉션을 쓴다.
+let afterschoolScheduleCache = [];
+let editingAfterschoolScheduleId = null;
+function startAfterschoolScheduleListener(){
+  classCol('afterschoolSchedule').onSnapshot(snap => {
+    afterschoolScheduleCache = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+      .sort((a,b) => (a.date||'').localeCompare(b.date||'') || (a.time||'').localeCompare(b.time||''));
+    renderAfterschoolScheduleAdmin();
+    renderAfterschoolAttendanceTable();
+  renderAfterschoolAttendanceStats();
+    renderAfterschoolStudentsAdmin();
+    renderNav();
+    if (currentView === 'afterschool') renderAfterschoolScheduleView();
+  }, err => console.error('afterschoolSchedule 컬렉션을 불러오지 못했습니다 (Firestore 보안 규칙을 확인하세요):', err));
+}
+function addAfterschoolSchedule(){
+  const date = document.getElementById('afterschoolSchedDate').value;
+  const time = document.getElementById('afterschoolSchedTime').value;
+  const title = document.getElementById('afterschoolSchedTitle').value.trim();
+  if (!date || !title) return alert('날짜와 내용을 입력해주세요.');
+  classCol('afterschoolSchedule').add({ date, time, title })
+    .then(() => { document.getElementById('afterschoolSchedTitle').value = ''; })
+    .catch(err => alert('일정 추가에 실패했습니다: ' + err.message));
+}
+function editAfterschoolSchedule(id){
+  editingAfterschoolScheduleId = id;
+  renderAfterschoolScheduleAdmin();
+}
+function cancelEditAfterschoolSchedule(){
+  editingAfterschoolScheduleId = null;
+  renderAfterschoolScheduleAdmin();
+}
+function saveEditAfterschoolSchedule(id){
+  const date = document.getElementById('editAfterschoolDate_' + id).value;
+  const time = document.getElementById('editAfterschoolTime_' + id).value;
+  const title = document.getElementById('editAfterschoolTitle_' + id).value.trim();
+  if (!date || !title) return alert('날짜와 내용을 입력해주세요.');
+  classCol('afterschoolSchedule').doc(id).update({ date, time, title })
+    .then(() => { editingAfterschoolScheduleId = null; renderAfterschoolScheduleAdmin(); })
+    .catch(err => alert('수정에 실패했습니다: ' + err.message));
+}
+function deleteAfterschoolSchedule(id){
+  if (!confirm('이 일정을 삭제할까요?')) return;
+  if (editingAfterschoolScheduleId === id) editingAfterschoolScheduleId = null;
+  classCol('afterschoolSchedule').doc(id).delete().catch(err => alert('삭제에 실패했습니다: ' + err.message));
+}
+// 계획서 PDF의 "수업 계획" 표 내용을 그대로 복사해서 한 줄씩 붙여넣으면(예: "9/14 OT 회로의
+// 구성과 점검") parseAnyScheduleText()(학사일정·자격증 일정에서 이미 쓰는 것과 같은 인식기)로
+// 날짜를 인식해 한 번에 등록한다 — 관리자 화면에서 하나하나 입력하지 않아도 된다.
+let afterschoolScheduleBulkStaged = [];
+function previewAfterschoolScheduleBulk(){
+  const text = document.getElementById('afterschoolScheduleBulkInput').value;
+  afterschoolScheduleBulkStaged = parseAnyScheduleText(text).sort((a,b) => a.date.localeCompare(b.date));
+  renderAfterschoolScheduleBulkPreview();
+}
+function renderAfterschoolScheduleBulkPreview(){
+  const el = document.getElementById('afterschoolScheduleBulkPreview');
+  if (!el) return;
+  if (!afterschoolScheduleBulkStaged.length) {
+    el.innerHTML = `<span class="text-gray-400">인식된 일정이 없습니다. 줄마다 날짜(예: 9/14, 2026-09-14, 9월 14일)를 포함해주세요.</span>`;
+    return;
+  }
+  el.innerHTML = `<b class="text-forest-dark">${afterschoolScheduleBulkStaged.length}건 인식됨</b> <span class="text-gray-400">— 아래에서 직접 수정·삭제할 수 있어요</span>
+    <div class="mt-2 max-h-64 overflow-y-auto space-y-1.5 pr-1">
+      ${afterschoolScheduleBulkStaged.map((p,i) => `
+        <div class="flex items-center gap-1.5 bg-card border border-gray-200 rounded-lg px-2 py-1.5">
+          <input type="date" value="${p.date}" onchange="updateAfterschoolScheduleBulkItem(${i},'date',this.value)" class="border border-gray-200 rounded px-1.5 py-1 text-xs font-mono shrink-0">
+          <input type="text" value="${escapeAttr(p.title)}" onchange="updateAfterschoolScheduleBulkItem(${i},'title',this.value)" class="flex-1 border border-gray-200 rounded px-1.5 py-1 text-xs min-w-0">
+          <button onclick="removeAfterschoolScheduleBulkItem(${i})" class="text-gray-300 hover:text-brick text-lg leading-none shrink-0">&times;</button>
+        </div>`).join('')}
+    </div>`;
+}
+function updateAfterschoolScheduleBulkItem(i, field, value){
+  afterschoolScheduleBulkStaged[i][field] = value;
+  if (field === 'date') afterschoolScheduleBulkStaged.sort((a,b) => a.date.localeCompare(b.date));
+  renderAfterschoolScheduleBulkPreview();
+}
+function removeAfterschoolScheduleBulkItem(i){
+  afterschoolScheduleBulkStaged.splice(i, 1);
+  renderAfterschoolScheduleBulkPreview();
+}
+function commitAfterschoolScheduleBulk(){
+  if (!afterschoolScheduleBulkStaged.length) return alert('등록할 일정이 없습니다.');
+  const defaultTime = document.getElementById('afterschoolScheduleBulkTime').value || '';
+  const count = afterschoolScheduleBulkStaged.length;
+  const batch = db.batch();
+  afterschoolScheduleBulkStaged.forEach(p => batch.set(classCol('afterschoolSchedule').doc(), { date: p.date, time: defaultTime, title: p.title }));
+  batch.commit().then(() => {
+    document.getElementById('afterschoolScheduleBulkInput').value = '';
+    afterschoolScheduleBulkStaged = [];
+    renderAfterschoolScheduleBulkPreview();
+    alert(`${count}건의 일정이 등록되었습니다.`);
+  }).catch(err => alert('등록에 실패했습니다: ' + err.message));
+}
+function weekdayLabelKr(dateStr){
+  if (!dateStr) return '';
+  return ['일','월','화','수','목','금','토'][new Date(dateStr + 'T00:00:00').getDay()];
+}
+function afterschoolDateLabel(dateStr){
+  if (!dateStr) return '';
+  const [, m, d] = dateStr.split('-');
+  return `${parseInt(m,10)}/${parseInt(d,10)}(${weekdayLabelKr(dateStr)})`;
+}
+function renderAfterschoolScheduleAdmin(){
+  const el = document.getElementById('afterschoolScheduleAdmin');
+  if (!el) return;
+  // 관리자 목록만 최근 날짜가 위로 오게 보여준다(출결 표 열 순서·학생 화면은 예정순이 더
+  // 자연스러워서 afterschoolScheduleCache 자체의 오름차순은 그대로 둔다).
+  const recentFirst = [...afterschoolScheduleCache].sort((a,b) => (b.date||'').localeCompare(a.date||'') || (b.time||'').localeCompare(a.time||''));
+  el.innerHTML = recentFirst.length ? recentFirst.map(s => {
+    if (editingAfterschoolScheduleId === s.id) {
+      return `
+      <div class="flex items-center gap-1.5 bg-card border border-forest rounded-lg px-2 py-1.5">
+        <input id="editAfterschoolDate_${s.id}" type="date" value="${escapeAttr(s.date || '')}" class="border border-gray-200 rounded px-1.5 py-1 text-xs font-mono shrink-0">
+        <input id="editAfterschoolTime_${s.id}" type="time" value="${escapeAttr(s.time || '')}" class="border border-gray-200 rounded px-1.5 py-1 text-xs shrink-0">
+        <input id="editAfterschoolTitle_${s.id}" type="text" value="${escapeAttr(s.title || '')}" class="flex-1 border border-gray-200 rounded px-1.5 py-1 text-xs min-w-0">
+        <button onclick="saveEditAfterschoolSchedule('${s.id}')" class="text-xs font-semibold text-forest-dark shrink-0">저장</button>
+        <button onclick="cancelEditAfterschoolSchedule()" class="text-xs text-gray-400 shrink-0">취소</button>
+      </div>`;
+    }
+    return `
+    <div class="flex items-center justify-between bg-card border border-gray-200 rounded-lg px-3 py-2">
+      <div class="min-w-0">
+        <p class="font-semibold text-sm">${escapeHtml(s.title || '')}</p>
+        <p class="font-mono text-xs text-gray-400">${afterschoolDateLabel(s.date)}${s.time ? ' · ' + escapeHtml(s.time) : ''}</p>
+        <p class="text-[11px] ${afterschoolAttendanceCache[s.id] ? 'text-forest-dark font-semibold' : 'text-gray-300'}">${afterschoolAttendanceSummary(s.id) || '출결 미확인'}</p>
+      </div>
+      <div class="flex items-center gap-2 shrink-0">
+        <button onclick="openAfterschoolAttendance('${s.id}')" class="text-xs font-semibold text-amber hover:underline">출결</button>
+        <button onclick="editAfterschoolSchedule('${s.id}')" class="text-xs font-semibold text-forest-dark hover:underline">수정</button>
+        <button onclick="deleteAfterschoolSchedule('${s.id}')" class="text-gray-300 hover:text-brick text-lg leading-none">&times;</button>
+      </div>
+    </div>`;
+  }).join('') : `<p class="text-gray-400 text-sm">등록된 일정이 없습니다.</p>`;
+}
+// 출결 — 명단에 등록된 학생을 세션(일정)마다 출석/지각/결석/조퇴 + 사유로 기록한다.
+// 관리자 전용 기능이라(학생 화면엔 안 보임) 마스킹 없이 실명을 그대로 보여준다.
+let afterschoolAttendanceCache = {};
+let afterschoolAttendanceUnsub = null;
+let openAfterschoolAttendanceScheduleId = null;
+const AFTERSCHOOL_ATTENDANCE_STATUSES = ['출석', '지각', '조퇴', '질병결석', '무단결석'];
+// 결석을 사유별로 나눠서(질병/무단) 표·요약에서 아이콘만 보고도 바로 구분할 수 있게 한다.
+// "결석"은 질병/무단으로 나누기 전에 이미 기록된 옛 값이 남아있을 수 있어 그대로 인식되게 둔다.
+const AFTERSCHOOL_STATUS_ICON = { 출석: '✅', 지각: '⏰', 조퇴: '🚪', 질병결석: '🤒', 무단결석: '🚫', 결석: '❌' };
+function startAfterschoolAttendanceListener(){
+  if (afterschoolAttendanceUnsub) return;
+  afterschoolAttendanceUnsub = classCol('afterschoolAttendance').onSnapshot(snap => {
+    afterschoolAttendanceCache = {};
+    snap.docs.forEach(d => { afterschoolAttendanceCache[d.id] = d.data().records || {}; });
+    renderAfterschoolScheduleAdmin();
+    renderAfterschoolAttendanceTable();
+  renderAfterschoolAttendanceStats();
+    renderAfterschoolStudentsAdmin();
+    if (currentView === 'afterschool') renderAfterschoolView();
+  }, err => console.error('afterschoolAttendance 컬렉션을 불러오지 못했습니다 (Firestore 보안 규칙을 확인하세요):', err));
+}
+function stopAfterschoolAttendanceListener(){
+  if (afterschoolAttendanceUnsub) { afterschoolAttendanceUnsub(); afterschoolAttendanceUnsub = null; }
+  afterschoolAttendanceCache = {};
+}
+function afterschoolAttendanceSummary(scheduleId){
+  const records = afterschoolAttendanceCache[scheduleId];
+  if (!records || !Object.keys(records).length) return '';
+  const counts = {};
+  Object.values(records).forEach(r => { if (r.status && r.status !== '출석') counts[r.status] = (counts[r.status] || 0) + 1; });
+  const parts = Object.entries(counts).map(([k, n]) => `${AFTERSCHOOL_STATUS_ICON[k] || ''}${k} ${n}`);
+  return parts.length ? parts.join(' · ') : '전원 출석';
+}
+const AFTERSCHOOL_STATUS_CELL_CLASS = { 출석: 'text-forest-dark', 지각: 'text-amber font-semibold', 조퇴: 'text-amber font-semibold', 질병결석: 'text-brick font-semibold', 무단결석: 'text-brick font-semibold', 결석: 'text-brick font-semibold' };
+// 학생 x 날짜 표로 한눈에 볼 수 있게 — 세션이 많아지면 옆으로 길어지므로 가로 스크롤 컨테이너 안에 둔다.
+// 학생별로 전체 기간을 집계해서 출석률·유형별 횟수를 한눈에 보여준다 — 날짜별 원본 기록(표)과
+// 달리, "누가 관리가 필요한지"를 바로 짚어낼 수 있게 출석률이 낮으면 빨간 굵은 글씨로 강조한다.
+function renderAfterschoolAttendanceStats(){
+  const el = document.getElementById('afterschoolAttendanceStats');
+  if (!el) return;
+  const students = afterschoolStudents();
+  const sessions = afterschoolScheduleCache;
+  if (!students.length || !sessions.length) {
+    el.innerHTML = `<p class="text-gray-400 text-sm">학생 명단과 일정을 먼저 등록해주세요.</p>`;
+    return;
+  }
+  const stats = students.map(s => {
+    const counts = { 출석: 0, 지각: 0, 조퇴: 0, 질병결석: 0, 무단결석: 0, 결석: 0 };
+    let marked = 0;
+    sessions.forEach(sess => {
+      const rec = (afterschoolAttendanceCache[sess.id] || {})[s.realName];
+      if (!rec || counts[rec.status] === undefined) return;
+      marked++;
+      counts[rec.status]++;
+    });
+    const absent = counts.질병결석 + counts.무단결석 + counts.결석;
+    const rate = marked ? Math.round((counts.출석 / marked) * 100) : null;
+    return { s, counts, marked, absent, rate };
+  });
+  el.innerHTML = `
+    <table class="text-sm border-collapse w-full">
+      <thead>
+        <tr>
+          <th class="border border-gray-200 px-3 py-2.5 text-left whitespace-nowrap">학생</th>
+          <th class="border border-gray-200 px-3 py-2.5 whitespace-nowrap">출석률</th>
+          <th class="border border-gray-200 px-3 py-2.5 whitespace-nowrap">✅ 출석</th>
+          <th class="border border-gray-200 px-3 py-2.5 whitespace-nowrap">⏰ 지각</th>
+          <th class="border border-gray-200 px-3 py-2.5 whitespace-nowrap">🚪 조퇴</th>
+          <th class="border border-gray-200 px-3 py-2.5 whitespace-nowrap">🤒 질병결석</th>
+          <th class="border border-gray-200 px-3 py-2.5 whitespace-nowrap">🚫 무단결석</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${stats.map(({ s, counts, marked, rate }) => `
+          <tr>
+            <td class="border border-gray-200 px-3 py-2.5 font-semibold whitespace-nowrap">${escapeHtml(s.grade || '')} ${escapeHtml(s.realName)}</td>
+            <td class="border border-gray-200 px-3 py-2.5 text-center whitespace-nowrap ${rate === null ? 'text-gray-300' : rate < 80 ? 'text-brick font-bold' : 'text-forest-dark font-semibold'}">${rate === null ? '-' : rate + '% (' + counts.출석 + '/' + marked + ')'}</td>
+            <td class="border border-gray-200 px-3 py-2.5 text-center">${counts.출석}</td>
+            <td class="border border-gray-200 px-3 py-2.5 text-center">${counts.지각}</td>
+            <td class="border border-gray-200 px-3 py-2.5 text-center">${counts.조퇴}</td>
+            <td class="border border-gray-200 px-3 py-2.5 text-center ${counts.질병결석 ? 'text-brick font-semibold' : ''}">${counts.질병결석}</td>
+            <td class="border border-gray-200 px-3 py-2.5 text-center ${(counts.무단결석 + counts.결석) ? 'text-brick font-semibold' : ''}">${counts.무단결석 + counts.결석}</td>
+          </tr>`).join('')}
+      </tbody>
+    </table>`;
+}
+function renderAfterschoolAttendanceTable(){
+  const el = document.getElementById('afterschoolAttendanceTable');
+  if (!el) return;
+  const students = afterschoolStudents();
+  const sessions = afterschoolScheduleCache;
+  if (!students.length || !sessions.length) {
+    el.innerHTML = `<p class="text-gray-400 text-sm">학생 명단과 일정을 먼저 등록해주세요.</p>`;
+    return;
+  }
+  el.innerHTML = `
+    <table class="text-sm border-collapse">
+      <thead>
+        <tr>
+          <th class="sticky left-0 bg-card border border-gray-200 px-3 py-2.5 text-left whitespace-nowrap">학생</th>
+          ${sessions.map(s => `<th class="border border-gray-200 px-3 py-2.5 whitespace-nowrap font-mono text-gray-500">${afterschoolDateLabel(s.date)}</th>`).join('')}
+        </tr>
+      </thead>
+      <tbody>
+        ${students.map(st => `
+          <tr>
+            <td class="sticky left-0 bg-card border border-gray-200 px-3 py-2.5 font-semibold whitespace-nowrap">${escapeHtml(st.grade || '')} ${escapeHtml(st.realName)}</td>
+            ${sessions.map(s => {
+              const rec = (afterschoolAttendanceCache[s.id] || {})[st.realName];
+              const cls = rec ? (AFTERSCHOOL_STATUS_CELL_CLASS[rec.status] || '') : 'text-gray-300';
+              const titleAttr = rec && rec.reason ? ` title="${escapeAttr(rec.reason)}"` : '';
+              const label = rec ? `${AFTERSCHOOL_STATUS_ICON[rec.status] || ''} ${rec.status}` : '-';
+              return `<td class="border border-gray-200 px-3 py-2.5 text-center whitespace-nowrap ${cls}"${titleAttr}>${escapeHtml(label)}</td>`;
+            }).join('')}
+          </tr>`).join('')}
+      </tbody>
+    </table>`;
+}
+function openAfterschoolAttendance(scheduleId){
+  openAfterschoolAttendanceScheduleId = scheduleId;
+  const s = afterschoolScheduleCache.find(x => x.id === scheduleId);
+  document.getElementById('afterschoolAttendanceTitle').textContent = s ? `${afterschoolDateLabel(s.date)} ${escapeHtml(s.title || '')} 출결` : '출결 확인';
+  renderAfterschoolAttendanceForm();
+  document.getElementById('afterschoolAttendanceModal').classList.remove('hidden');
+}
+function closeAfterschoolAttendance(){
+  document.getElementById('afterschoolAttendanceModal').classList.add('hidden');
+  openAfterschoolAttendanceScheduleId = null;
+}
+function renderAfterschoolAttendanceForm(){
+  const el = document.getElementById('afterschoolAttendanceList');
+  const records = afterschoolAttendanceCache[openAfterschoolAttendanceScheduleId] || {};
+  const list = afterschoolStudents();
+  el.innerHTML = list.length ? list.map((s, i) => {
+    const rec = records[s.realName] || { status: '출석', reason: '' };
+    return `
+    <div class="flex items-center gap-2 border border-gray-200 rounded-lg px-2.5 py-2">
+      <span class="text-sm font-semibold w-20 shrink-0 truncate">${escapeHtml(s.grade || '')} ${escapeHtml(s.realName)}</span>
+      <select id="attStatus_${i}" onchange="toggleAttReasonField(${i})" class="border border-gray-300 rounded px-1.5 py-1 text-xs shrink-0">
+        ${AFTERSCHOOL_ATTENDANCE_STATUSES.map(st => `<option value="${st}" ${rec.status === st ? 'selected' : ''}>${AFTERSCHOOL_STATUS_ICON[st]} ${st}</option>`).join('')}
+      </select>
+      <input id="attReason_${i}" value="${escapeAttr(rec.reason || '')}" placeholder="사유 (선택)" class="flex-1 border border-gray-300 rounded px-2 py-1 text-xs min-w-0 ${rec.status === '출석' ? 'hidden' : ''}">
+    </div>`;
+  }).join('') : `<p class="text-gray-400 text-sm">등록된 학생이 없습니다. 명단을 먼저 등록해주세요.</p>`;
+}
+function toggleAttReasonField(i){
+  const status = document.getElementById('attStatus_' + i).value;
+  document.getElementById('attReason_' + i).classList.toggle('hidden', status === '출석');
+}
+function saveAfterschoolAttendance(){
+  const list = afterschoolStudents();
+  const records = {};
+  list.forEach((s, i) => {
+    const statusEl = document.getElementById('attStatus_' + i);
+    const reasonEl = document.getElementById('attReason_' + i);
+    if (!statusEl) return;
+    records[s.realName] = { status: statusEl.value, reason: (reasonEl.value || '').trim() };
+  });
+  classCol('afterschoolAttendance').doc(openAfterschoolAttendanceScheduleId).set({ records }, { merge: true })
+    .then(() => { alert('출결이 저장되었습니다.'); closeAfterschoolAttendance(); })
+    .catch(err => alert('저장에 실패했습니다: ' + err.message));
+}
+function renderAfterschoolScheduleView(){
+  const el = document.getElementById('afterschoolScheduleView');
+  if (!el) return;
+  const upcoming = afterschoolScheduleCache.filter(s => (s.date || '') >= todayStr());
+  const list = upcoming.length ? upcoming : afterschoolScheduleCache;
+  el.innerHTML = list.length ? list.map(s => `
+    <div class="flex items-center justify-between bg-forest-light rounded-lg px-3 py-2.5">
+      <span class="font-semibold text-base text-forest-dark">${escapeHtml(s.title || '')}</span>
+      <span class="font-mono text-sm text-gray-300 shrink-0 ml-2">${afterschoolDateLabel(s.date)}${s.time ? ' · ' + escapeHtml(s.time) : ''}</span>
+    </div>`).join('') : `<p class="text-gray-400 text-sm">등록된 일정이 없습니다.</p>`;
+}
+function renderAfterschoolView(){
+  const list = afterschoolStudents();
+  document.getElementById('afterschoolStudentsView').innerHTML = list.length
+    ? list.map(s => `
+      <div class="flex items-center justify-between bg-forest-light rounded-lg px-3 py-2">
+        <span class="font-semibold text-base text-forest-dark">${escapeHtml(s.grade || '')} ${escapeHtml(maskKoreanName(s.realName))}</span>
+        <span class="text-sm text-gray-300 shrink-0 ml-2">${escapeHtml(afterschoolStudentAttendanceSummary(s.realName))}</span>
+      </div>`).join('')
+    : `<p class="text-gray-400 text-sm">등록된 학생이 없습니다.</p>`;
+  const title = (settingsCache && settingsCache.afterschoolCourseTitle) || '';
+  const info = (settingsCache && settingsCache.afterschoolCourseInfo) || '';
+  const introEl = document.getElementById('afterschoolCourseIntro');
+  if (introEl) {
+    introEl.classList.toggle('hidden', !title && !info);
+    introEl.innerHTML = `
+      ${title ? `<p class="font-display text-lg text-forest-dark">${escapeHtml(title)}</p>` : ''}
+      ${info ? `<p class="text-sm text-gray-600 whitespace-pre-line mt-1">${escapeHtml(info)}</p>` : ''}`;
+  }
+  renderAfterschoolScheduleView();
+}
+// 담임 학급 전체가 아니라 이 명단에 등록된 학생에게만 보낸다 — send-notification.js가
+// names를 넘기면 fcmTokens.name과 대조해서 그 학생들에게만 보내도록 지원한다. 매칭은 학생이
+// 알림을 켤 때 등록한 "실명"과 이뤄져야 하므로, 가려지지 않은 realName을 그대로 넘긴다.
+function sendAfterschoolPush(){
+  const title = document.getElementById('afterschoolPushTitle').value.trim();
+  const content = document.getElementById('afterschoolPushBody').value.trim();
+  if (!title) return alert('제목을 입력해주세요.');
+  const names = afterschoolStudents().map(s => s.realName).filter(Boolean);
+  if (!names.length) return alert('등록된 참여 학생이 없습니다. 명단을 먼저 추가해주세요.');
+  sendPushNotification(title, content, names);
+  document.getElementById('afterschoolPushTitle').value = '';
+  document.getElementById('afterschoolPushBody').value = '';
+}
+// 학기 단위로 열고 닫는다 — 무료 요금제 1GB 저장 공간을 감안해 지난 학기 것은 남겨두지 않고
+// 지운다(요청: "1기가 저장공간을 고려해서 삭제해도 되고"). 명단·일정이 비면 방과후수업 탭도
+// 자동으로 메뉴에서 사라지고(hasActiveAfterschool 참고), 다음 학기 걸 등록하면 다시 나타난다.
+function endAfterschoolTerm(){
+  if (!confirm('이번 학기 방과후수업을 종료할까요?\n참여 학생 명단·수업 일정·출결 기록이 모두 삭제되고, 메뉴에서도 "방과후수업" 탭이 사라집니다.\n(다음 학기 걸 다시 등록하면 탭이 다시 나타나요)')) return;
+  Promise.all([
+    classCol('afterschoolSchedule').get().then(snap => {
+      const batch = db.batch();
+      snap.docs.forEach(d => batch.delete(d.ref));
+      return batch.commit();
+    }),
+    classCol('afterschoolAttendance').get().then(snap => {
+      const batch = db.batch();
+      snap.docs.forEach(d => batch.delete(d.ref));
+      return batch.commit();
+    }),
+    classCol('settings').doc('general').set({
+      afterschoolStudents: [], afterschoolCourseTitle: '', afterschoolCourseInfo: '',
+    }, { merge: true }),
+  ]).then(() => {
+    settingsCache.afterschoolStudents = [];
+    settingsCache.afterschoolCourseTitle = '';
+    settingsCache.afterschoolCourseInfo = '';
+    alert('종료했습니다. 다음 학기 명단·일정을 등록하면 메뉴에 다시 나타나요.');
+    renderAdmin();
+    renderNav();
+  }).catch(err => alert('초기화에 실패했습니다: ' + err.message));
+}
 function requireRosterImportPassword(onSuccess){
   openPasswordPrompt('학생 명단을 불러오려면 비밀번호를 입력하세요.', async (input) => {
     if (!input) return;
@@ -6451,6 +7118,7 @@ const ADMIN_CARD_LABELS = {
   noticesManage: '📢 공유 페이지(공지사항) 관리',
   liveNote: '📌 실시간 포스트잇 메시지',
   counseling: '🗣️ 상담주간 일정',
+  afterschool: '🏫 방과후수업 관리',
   navOrder: '🧭 메뉴 순서 편집',
   wallColumns: '🧱 담벼락 게시판 관리',
   classInfo: '🏷 학급 기본 정보',
@@ -6814,6 +7482,10 @@ function renderAdmin(){
     ? settingsCache.extraCertLinks.map((l,i) => `
       <div class="flex items-center justify-between bg-card border border-gray-200 rounded-lg px-2 py-1.5 text-xs">
         <span>${escapeHtml(l.label)} <span class="text-gray-400">— ${escapeHtml(l.url)}</span></span>
+  renderAfterschoolStudentsAdmin();
+  renderAfterschoolScheduleAdmin();
+  renderAfterschoolAttendanceTable();
+  renderAfterschoolAttendanceStats();
         <button onclick="removeExtraCertLink(${i})" class="text-gray-300 hover:text-brick text-base leading-none shrink-0 ml-2">&times;</button>
       </div>`).join('')
     : `<p class="text-gray-400 text-xs">추가된 링크가 없습니다.</p>`;
@@ -6831,6 +7503,9 @@ function openShareQrZoom(){
 function closeShareQrZoom(){
   document.getElementById('shareQrZoomModal').classList.add('hidden');
 }
+  document.getElementById('afterschoolPasswordField').value = '';
+  document.getElementById('afterschoolCourseTitle').value = settingsCache.afterschoolCourseTitle || '';
+  document.getElementById('afterschoolCourseInfo').value = settingsCache.afterschoolCourseInfo || '';
 function openCheckinQrZoom(){
   document.getElementById('checkinQrZoomImg').src = `https://api.qrserver.com/v1/create-qr-code/?size=480x480&data=${encodeURIComponent(checkinQrLink())}`;
   document.getElementById('checkinQrZoomModal').classList.remove('hidden');
