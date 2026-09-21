@@ -6166,10 +6166,11 @@ function renderAfterschoolScheduleAdmin(){
 let afterschoolAttendanceCache = {};
 let afterschoolAttendanceUnsub = null;
 let openAfterschoolAttendanceScheduleId = null;
-const AFTERSCHOOL_ATTENDANCE_STATUSES = ['출석', '지각', '조퇴', '질병결석', '무단결석'];
-// 결석을 사유별로 나눠서(질병/무단) 표·요약에서 아이콘만 보고도 바로 구분할 수 있게 한다.
-// "결석"은 질병/무단으로 나누기 전에 이미 기록된 옛 값이 남아있을 수 있어 그대로 인식되게 둔다.
-const AFTERSCHOOL_STATUS_ICON = { 출석: '✅', 지각: '⏰', 조퇴: '🚪', 질병결석: '🤒', 무단결석: '🚫', 결석: '❌' };
+// 무단결석은 "사유 없이" 빠졌다는 뜻이라 사유를 적으면 모순이 된다 — 질병은 아니지만 사유가
+// 있는 결석(경조사 등)을 위해 일반 "결석" 항목을 따로 둔다.
+const AFTERSCHOOL_ATTENDANCE_STATUSES = ['출석', '지각', '조퇴', '질병결석', '결석', '무단결석'];
+// 결석을 사유별로 나눠서(질병/일반/무단) 표·요약에서 아이콘만 보고도 바로 구분할 수 있게 한다.
+const AFTERSCHOOL_STATUS_ICON = { 출석: '✅', 지각: '⏰', 조퇴: '🚪', 질병결석: '🤒', 결석: '❌', 무단결석: '🚫' };
 function startAfterschoolAttendanceListener(){
   if (afterschoolAttendanceUnsub) return;
   afterschoolAttendanceUnsub = classCol('afterschoolAttendance').onSnapshot(snap => {
