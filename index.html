@@ -646,6 +646,11 @@ service cloud.firestore {
         <div id="afterschoolScheduleView" class="space-y-1.5"></div>
       </div>
     </div>
+    <div class="assignment-layout-card p-5 mt-5">
+      <h2 class="font-display text-lg mb-1 text-forest-dark">📢 공지 내역</h2>
+      <p class="text-xs text-gray-300 mb-3">푸시 알림으로 보낸 내용이 여기 그대로 남아요. 알림을 놓쳤거나 앱을 꺼둔 사이에 온 것도 여기서 다시 확인할 수 있어요.</p>
+      <div id="afterschoolMessagesView" class="space-y-2"></div>
+    </div>
   </section>
 
   <!-- ===================== 위치기반 등교 확인 (QR로 접속, 로그인 불필요) ===================== -->
@@ -2348,6 +2353,7 @@ function continueBootstrapApp(){
   });
   startAfterschoolScheduleListener();
   startAfterschoolAttendanceListener();
+  startAfterschoolMessagesListener();
 
   auth.onAuthStateChanged(user => {
     isTeacher = !!(user && (user.email === TEACHER_EMAIL || user.email === SUPER_ADMIN_EMAIL));
@@ -2761,7 +2767,9 @@ function withTitleIcon(label){
 }
 
 function renderTabLabel(label){
-  const text = String(label || '').trim();
+  // 메뉴탭 이름에 줄바꿈이 섞여 들어가면(예: 직접 만든 페이지 제목에 실수로 Enter가 눌린 경우)
+  // 탭이 위아래 두 줄로 깨져 보인다 — 공백류를 전부 한 칸으로 합쳐서 항상 한 줄로 보이게 한다.
+  const text = String(label || '').replace(/\s+/g, ' ').trim();
   if (!text) return '';
   const match = Object.entries(TITLE_ICONS).find(([key]) => text.includes(key));
   const icon = match ? match[1] : '';
@@ -6375,6 +6383,7 @@ function renderAfterschoolView(){
       ${info ? `<p class="text-sm text-gray-600 whitespace-pre-line mt-1">${escapeHtml(info)}</p>` : ''}`;
   }
   renderAfterschoolScheduleView();
+  renderAfterschoolMessagesView();
 }
 // 담임 학급 전체가 아니라 이 명단에 등록된 학생에게만 보낸다 — send-notification.js가
 // names를 넘기면 fcmTokens.name과 대조해서 그 학생들에게만 보내도록 지원한다. 매칭은 학생이
@@ -6386,8 +6395,31 @@ function sendAfterschoolPush(){
   const names = afterschoolStudents().map(s => s.realName).filter(Boolean);
   if (!names.length) return alert('등록된 참여 학생이 없습니다. 명단을 먼저 추가해주세요.');
   sendPushNotification(title, content, names);
+  // 푸시는 그 순간 앱을 켜둔 기기에만 보인다 — 나중에 앱을 열거나 알림을 놓친 학생도 볼 수
+  // 있도록 방과후수업 페이지에 내용을 그대로 남겨둔다.
+  classCol('afterschoolMessages').add({ title, content, sentAt: Date.now() })
+    .catch(err => console.error('공지 내역 저장 실패:', err));
   document.getElementById('afterschoolPushTitle').value = '';
   document.getElementById('afterschoolPushBody').value = '';
+}
+let afterschoolMessagesCache = [];
+function startAfterschoolMessagesListener(){
+  classCol('afterschoolMessages').orderBy('sentAt', 'desc').limit(30).onSnapshot(snap => {
+    afterschoolMessagesCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    if (currentView === 'afterschool') renderAfterschoolMessagesView();
+  }, err => console.error('afterschoolMessages 컬렉션을 불러오지 못했습니다 (Firestore 보안 규칙을 확인하세요):', err));
+}
+function renderAfterschoolMessagesView(){
+  const el = document.getElementById('afterschoolMessagesView');
+  if (!el) return;
+  el.innerHTML = afterschoolMessagesCache.length ? afterschoolMessagesCache.map(m => `
+    <div class="bg-forest-light rounded-lg px-3 py-2.5">
+      <div class="flex items-center justify-between gap-2">
+        <span class="font-semibold text-forest-dark">${escapeHtml(m.title || '')}</span>
+        <span class="text-xs text-gray-300 shrink-0">${timeAgo(m.sentAt || 0)}</span>
+      </div>
+      ${m.content ? `<p class="text-sm text-gray-200 mt-1 whitespace-pre-line">${escapeHtml(m.content)}</p>` : ''}
+    </div>`).join('') : `<p class="text-gray-400 text-sm">아직 보낸 공지가 없습니다.</p>`;
 }
 // 학기 단위로 열고 닫는다 — 무료 요금제 1GB 저장 공간을 감안해 지난 학기 것은 남겨두지 않고
 // 지운다(요청: "1기가 저장공간을 고려해서 삭제해도 되고"). 명단·일정이 비면 방과후수업 탭도

@@ -37,5 +37,6 @@ service cloud.firestore {
     match /classes/{classId}/liveNotes/{doc}      { allow read, write: if isClassTeacher(classId); }
     match /classes/{classId}/afterschoolSchedule/{doc}    { allow read: if true; allow write: if isClassTeacher(classId); }
     match /classes/{classId}/afterschoolAttendance/{doc}  { allow read: if true; allow write: if isClassTeacher(classId); }
+    match /classes/{classId}/afterschoolMessages/{doc}    { allow read: if true; allow write: if isClassTeacher(classId); }
   }
 }
