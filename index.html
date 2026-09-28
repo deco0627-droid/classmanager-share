@@ -2231,6 +2231,12 @@ function showInAppPushToast(title, body){
   document.body.appendChild(overlay);
   setTimeout(() => overlay.remove(), 12000);
 }
+// 일반 공지 푸시는 원래 "등록된 기기 전부"에게 갔는데, 방과후수업(다른 반 학생도 알림만
+// 받으려고 이 반 주소로 들어와 등록하는 경우가 있음)이 생기면서 그 학생들에게도 이 반 일반
+// 공지가 같이 가는 문제가 생겼다 — 일반 공지는 이 반 학생 명단에 있는 이름으로만 좁힌다.
+function homeroomStudentNames(){
+  return studentsCache.map(s => s.name).filter(Boolean);
+}
 // 공지 등록/수정 시 팝업 알림이 켜져 있거나, 포스트잇을 보낼 때 실제 휴대폰 푸시를 보낸다.
 // 결과(성공/실패 이유)를 화면에 토스트로 바로 보여줘서, 조용히 실패하는 일이 없게 한다.
 function sendPushNotification(title, content, names){
@@ -6892,7 +6898,7 @@ function broadcastLiveNote(text, imageUrl){
   classCol('liveNotes').add({ text, imageUrl, sentAt });
   // 포스트잇은 원래 "지금 보고 있는 사람에게만" 뜨는 기능이었는데, 앱을 안 켜놓은 학생한테도
   // 닿게 해달라는 요청으로 휴대폰 푸시도 같이 보낸다(공지 팝업과 같은 방식 재사용).
-  sendPushNotification('📌 선생님 메시지', text || '사진을 보내셨어요. 앱을 열어서 확인해보세요.');
+  sendPushNotification('📌 선생님 메시지', text || '사진을 보내셨어요. 앱을 열어서 확인해보세요.', homeroomStudentNames());
 }
 function resendLiveNote(text, imageUrl){
   broadcastLiveNote(text || '', imageUrl || null);
@@ -7008,7 +7014,7 @@ function saveNotice(){
     classCol('notices').add({ date: todayStr(), title, content, tags, imageUrl, pinned, color, popupFrom, popupUntil, createdAt: Date.now() });
   }
   // 팝업으로 강조하기로 한 공지는 휴대폰 푸시 알림도 같이 보낸다.
-  if (popupOn) sendPushNotification(title, content);
+  if (popupOn) sendPushNotification(title, content, homeroomStudentNames());
   cancelNoticeEdit();
 }
 function editNotice(id){
