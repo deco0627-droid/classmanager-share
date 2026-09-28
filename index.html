@@ -1281,7 +1281,7 @@ service cloud.firestore {
           <button onclick="recoverConsultPassword()" class="mt-1 text-xs text-forest-dark font-semibold hover:underline">비밀번호를 잊었어요 — 복구 메일 보내기</button>
 
           <label class="text-xs font-semibold text-gray-500 mt-4 block">청소구역·동아리 배정표 · 등교 확인 비밀번호 설정</label>
-          <p class="text-[11px] text-gray-400 mb-2">실명이 그대로 보이는 청소구역·동아리 배정표와 등교 확인 화면이 이 비밀번호를 같이 써요. 교사는 로그인만으로 바로 보이고, 한 번 맞히면 그 기기에서는 다시 안 물어봐요. 기본값은 <b>class0627</b>이에요. 암호화해서 저장하므로 현재 값은 보이지 않아요 — 바꾸고 싶을 때만 새 비밀번호를 입력하고 저장하세요.</p>
+          <p class="text-[11px] text-gray-400 mb-2">실명이 그대로 보이는 청소구역·동아리 배정표와 등교 확인 화면이 이 비밀번호를 같이 써요. 교사는 로그인만으로 바로 보이고, 한 번 맞히면 그 기기에서는 다시 안 물어봐요. 기본값은 <b>4321</b>이에요. 암호화해서 저장하므로 현재 값은 보이지 않아요 — 바꾸고 싶을 때만 새 비밀번호를 입력하고 저장하세요.</p>
           <div class="flex gap-2 mt-1 mb-2">
             <input id="assignmentPasswordField" type="password" placeholder="새 비밀번호 입력 (안 바꾸면 비워두세요)" class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm">
             <button onclick="saveAssignmentPassword()" class="bg-forest text-white px-4 rounded-lg text-sm font-semibold">저장</button>
@@ -2032,7 +2032,7 @@ function defaultSettings(){
     className: '학급 수첩', certificateTypes: [...DEFAULT_CERT_TYPES], timetable: {}, certGuide: '', certRoadmap: null,
     healthPassword: 'health1234',
     consultPassword: 'consult1234',
-    assignmentPassword: 'class0627',
+    assignmentPassword: '4321',
     healthRecoveryEmail: '',
     personalLinks: [],
     weatherLocation: { name: '서울시 구로구', lat: 37.4954, lon: 126.8874 },
@@ -5847,7 +5847,7 @@ function getRosterImportPasswordHash(){
   return getHealthPasswordHash();
 }
 async function getAssignmentPasswordHash(){
-  return (settingsCache && settingsCache.assignmentPasswordHash) || await getDefaultPwHash('class0627');
+  return (settingsCache && settingsCache.assignmentPasswordHash) || await getDefaultPwHash('4321');
 }
 const ASSIGNMENT_PW_STORAGE_KEY = 'cm_assignmentPwUnlocked';
 function isAssignmentUnlocked(){
