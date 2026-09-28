@@ -2990,7 +2990,12 @@ function loginTeacher(){
   if (!email || !pw) return;
   document.getElementById('loginError').classList.add('hidden');
   document.getElementById('loginResetSent').classList.add('hidden');
-  auth.signInWithEmailAndPassword(email, pw)
+  // 브라우저를 닫았다 다시 열어도 로그인이 유지되도록(요청: "한번 로그인하면 그 PC/폰에서는
+  // 로그인 되어있게") 로그인 전에 LOCAL 지속성을 명시적으로 켠다 — 기본값도 LOCAL이지만,
+  // 사이트 데이터 설정에 따라 기본값이 달라질 수 있어 확실히 해둔다.
+  auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
+    .catch(() => {})
+    .then(() => auth.signInWithEmailAndPassword(email, pw))
     .then(() => { closeLoginModal(); })
     .catch(err => {
       const el = document.getElementById('loginError');
