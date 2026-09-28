@@ -3398,7 +3398,7 @@ function noticeCardHtml(n, borderColorClass){
   const border = custom ? custom.border : (borderColorClass || 'border-amber');
   const titleColorClass = custom ? custom.text : '';
   return `
-    <div class="border-l-2 ${border} pl-3 flex gap-2">
+    <div class="border-l-2 ${border} pl-3 flex gap-2 cursor-zoom-in hover:bg-gray-50 rounded-r-lg -mr-1 pr-1 py-0.5" onclick="openNoticeZoom('${n.id}')" title="눌러서 전체 내용 보기">
       <div class="flex-1 min-w-0">
         <p class="font-semibold ${titleColorClass}">${escapeHtml(n.title)}${noticeRecentBadgeHtml(n)}</p>
         <p class="text-gray-500 text-sm mt-0.5 line-clamp-2">${escapeHtml(n.content)}</p>
