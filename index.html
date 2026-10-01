@@ -1049,6 +1049,15 @@ service cloud.firestore {
           <div id="attendanceTodayList" class="mt-2 text-sm"></div>
         </div>
       </div>
+      <div class="bg-card border border-gray-200 rounded-xl p-5" data-admin-card="taskChecklist">
+        <h2 class="font-display text-lg mb-2 text-forest-dark">📋 학급 업무 체크리스트</h2>
+        <p class="text-xs text-gray-500 mb-3">학급 운영에 필요한 할 일을 적어두고 체크해가며 관리하세요. 교사만 볼 수 있어요.</p>
+        <div class="flex gap-2 mb-3">
+          <input id="newTaskInput" placeholder="할 일을 입력하세요" class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm" onkeydown="if(event.key==='Enter') addTask()">
+          <button onclick="addTask()" class="bg-forest text-white px-4 rounded-lg text-sm font-semibold hover:bg-forest-dark">추가</button>
+        </div>
+        <div id="taskChecklistList" class="space-y-1.5 text-sm max-h-[320px] overflow-y-auto pr-1"></div>
+      </div>
       <div class="bg-card border border-gray-200 rounded-xl p-5 lg:col-span-2" data-admin-card="certRoadmap">
         <button id="adminCollapseBtn_certRoadmap" onclick="toggleAdminCollapse('certRoadmap')" aria-expanded="false" class="admin-collapse-btn">
           <h2 class="font-display text-lg text-forest-dark">🏅 자격증 안내 로드맵 편집</h2>
@@ -2087,6 +2096,8 @@ let openCounselLogId = null;
 let editingCounselingSlotId = null;
 let customPagesCache = [];
 let certExamsCache = [];
+let tasksCache = [];
+let editingTaskId = null;
 let weatherCache = null;
 let lunchMenuCache = null;
 let weeklyWeatherCache = [];
@@ -2375,6 +2386,11 @@ function continueBootstrapApp(){
     certExamsCache = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => (a.date||'').localeCompare(b.date||''));
     if (currentView === 'certinfo') renderCertInfo();
   });
+  classCol('tasks').onSnapshot(snap => {
+    // 최근에 입력한 항목을 위에서 바로 보이게, 오래된 순이 아니라 최신순으로 둔다.
+    tasksCache = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => (b.createdAt||0)-(a.createdAt||0));
+    if (currentView === 'admin') renderTaskChecklist();
+  }, err => console.error('tasks 컬렉션을 불러오지 못했습니다 (Firestore 보안 규칙을 확인하세요):', err));
   startAfterschoolScheduleListener();
   startAfterschoolAttendanceListener();
   startAfterschoolMessagesListener();
@@ -7203,6 +7219,7 @@ function navDrop(e, i){
 const ADMIN_CARD_LABELS = {
   shareLink: '🔗 학생 공유 링크 & QR',
   attendanceGeo: '📍 등교 확인 QR (위치 기반)',
+  taskChecklist: '📋 학급 업무 체크리스트',
   certRoadmap: '🏅 자격증 안내 로드맵 편집',
   noticesManage: '📢 공유 페이지(공지사항) 관리',
   liveNote: '📌 실시간 포스트잇 메시지',
@@ -7441,6 +7458,71 @@ function removePersonalLink(i){
   classCol('settings').doc('general').set({ personalLinks: links }, { merge: true });
   renderPersonalLinksInputs();
 }
+function renderTaskChecklist(){
+  const el = document.getElementById('taskChecklistList');
+  if (!el) return;
+  el.innerHTML = tasksCache.length ? tasksCache.map(t => {
+    const d = new Date(t.createdAt || Date.now());
+    const dateLabel = `${pad2(d.getMonth() + 1)}/${pad2(d.getDate())}`;
+    if (editingTaskId === t.id) {
+      // 할 일 내용이 긴 문단인 경우가 많아서(줄바꿈 여러 개), 한 줄짜리 input에 우겨넣으면
+      // 글자 길이만큼 input이 늘어나면서 저장·취소 버튼이 화면 밖으로 밀려나 안 눌리는
+      // 문제가 있었다 — textarea로 바꾸고 버튼을 아래 별도 줄에 둔다.
+      return `
+      <div class="bg-white border border-forest rounded-lg px-3 py-2">
+        <span class="font-mono text-xs text-gray-400">${dateLabel}</span>
+        <textarea id="editTaskInput_${t.id}" rows="3" class="w-full border border-gray-300 rounded px-2 py-1.5 text-sm mt-1 mb-1.5">${escapeHtml(t.text || '')}</textarea>
+        <div class="flex gap-2">
+          <button onclick="saveEditTask('${t.id}')" class="text-xs font-semibold text-forest-dark">저장</button>
+          <button onclick="cancelEditTask()" class="text-xs text-gray-400">취소</button>
+        </div>
+      </div>`;
+    }
+    return `
+    <div class="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-3 py-2">
+      <input type="checkbox" ${t.done ? 'checked' : ''} onchange="toggleTask('${t.id}', ${!!t.done})" class="w-4 h-4 accent-forest shrink-0">
+      <span class="font-mono text-xs text-gray-400 shrink-0">${dateLabel}</span>
+      <span class="flex-1 ${t.done ? 'line-through text-gray-400' : 'text-ink'}">${escapeHtml(t.text || '')}</span>
+      <button onclick="startEditTask('${t.id}')" class="text-gray-300 hover:text-forest-dark text-xs shrink-0">수정</button>
+      <button onclick="deleteTask('${t.id}')" class="text-gray-300 hover:text-brick text-lg leading-none shrink-0">&times;</button>
+    </div>`;
+  }).join('') : '<p class="text-xs text-gray-400">등록된 할 일이 없습니다.</p>';
+}
+function startEditTask(id){
+  editingTaskId = id;
+  renderTaskChecklist();
+  const input = document.getElementById('editTaskInput_' + id);
+  if (input) { input.focus(); input.setSelectionRange(input.value.length, input.value.length); }
+}
+function cancelEditTask(){
+  editingTaskId = null;
+  renderTaskChecklist();
+}
+function saveEditTask(id){
+  const input = document.getElementById('editTaskInput_' + id);
+  if (!input) return;
+  const text = input.value.trim();
+  if (!text) return alert('내용을 입력해주세요.');
+  classCol('tasks').doc(id).update({ text })
+    .then(() => { editingTaskId = null; })
+    .catch(err => alert('수정에 실패했습니다: ' + err.message));
+}
+function addTask(){
+  const input = document.getElementById('newTaskInput');
+  const text = input.value.trim();
+  if (!text) return;
+  classCol('tasks').add({ text, done: false, createdAt: Date.now() })
+    .then(() => { input.value = ''; })
+    .catch(err => alert('할 일 추가에 실패했습니다: ' + err.message));
+}
+function toggleTask(id, current){
+  classCol('tasks').doc(id).set({ done: !current }, { merge: true })
+    .catch(err => alert('업데이트에 실패했습니다: ' + err.message));
+}
+function deleteTask(id){
+  classCol('tasks').doc(id).delete()
+    .catch(err => alert('삭제에 실패했습니다: ' + err.message));
+}
 function renderCertRoadmapForm(){
   const data = getCertRoadmap();
   document.getElementById('certRoadmapIntroTitle').value = data.intro.title;
@@ -7488,6 +7570,7 @@ function resetCertRoadmap(){
 }
 function renderAdmin(){
   if (!ensureTeacherAccess()) return;
+  renderTaskChecklist();
   renderPersonalLinksInputs();
   renderCertRoadmapForm();
   renderAdminCardOrderList();
