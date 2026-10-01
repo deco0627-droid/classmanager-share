@@ -981,6 +981,43 @@ service cloud.firestore {
     </div>
   </section>
 
+  <!-- ===================== 학급 업무 체크리스트 (비공개, 교사 전용) ===================== -->
+  <section id="view-tasks" class="view hidden fade-in">
+    <span class="badge-private">교사만 열람 가능</span>
+    <h1 class="font-display text-2xl mt-1 mb-5">📋 빠른메모/체크리스트</h1>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+      <div class="bg-card border border-gray-200 rounded-xl p-5">
+        <h2 class="font-display text-lg mb-2 text-forest-dark">🏫 학급 업무</h2>
+        <p class="text-xs text-gray-500 mb-3">학급 운영에 필요한 할 일을 적어두고 체크해가며 관리하세요.</p>
+        <div class="flex gap-2 mb-1">
+          <input id="newTaskInput_class" placeholder="할 일을 입력하세요 (화면 캡처는 Ctrl+V)" class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm" onkeydown="if(event.key==='Enter') addTask('class')">
+          <button onclick="addTask('class')" class="bg-forest text-white px-4 rounded-lg text-sm font-semibold hover:bg-forest-dark">추가</button>
+        </div>
+        <div id="taskImagePreviewWrap_class" class="hidden mb-3 mt-1 flex items-center gap-2">
+          <img id="taskImagePreview_class" class="h-16 rounded-lg border border-gray-200">
+          <button onclick="removeTaskImage('class')" class="text-xs text-brick hover:underline">이미지 제거</button>
+        </div>
+        <div id="taskChecklistList_class" class="space-y-1.5 text-sm mt-3"></div>
+      </div>
+      <div class="bg-card border border-gray-200 rounded-xl p-5">
+        <h2 class="font-display text-lg mb-2 text-amber">🙋 개인 업무</h2>
+        <p class="text-xs text-gray-500 mb-3">본인만 보는 개인 할 일을 적어두고 체크해가며 관리하세요.</p>
+        <div class="flex gap-2 mb-1">
+          <input id="newTaskInput_personal" placeholder="할 일을 입력하세요 (화면 캡처는 Ctrl+V)" class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm" onkeydown="if(event.key==='Enter') addTask('personal')">
+          <button onclick="addTask('personal')" class="bg-amber text-white px-4 rounded-lg text-sm font-semibold hover:opacity-90">추가</button>
+        </div>
+        <div id="taskImagePreviewWrap_personal" class="hidden mb-3 mt-1 flex items-center gap-2">
+          <img id="taskImagePreview_personal" class="h-16 rounded-lg border border-gray-200">
+          <button onclick="removeTaskImage('personal')" class="text-xs text-brick hover:underline">이미지 제거</button>
+        </div>
+        <div id="taskChecklistList_personal" class="space-y-1.5 text-sm mt-3"></div>
+      </div>
+    </div>
+    <div id="taskImageZoomModal" class="hidden fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-6" onclick="closeTaskImageZoom()">
+      <img id="taskImageZoomImg" src="" alt="첨부 이미지 확대" class="max-w-full max-h-full rounded-xl">
+    </div>
+  </section>
+
   <!-- ===================== 관리자 (비공개, 교사 전용) ===================== -->
   <section id="view-admin" class="view hidden fade-in">
     <span class="badge-private">교사만 열람 가능</span>
@@ -1048,15 +1085,6 @@ service cloud.firestore {
           <button onclick="loadTodayAttendance()" class="mt-3 text-xs border border-gray-300 bg-card px-3 py-1.5 rounded-lg hover:bg-gray-50">오늘 확인 현황 보기</button>
           <div id="attendanceTodayList" class="mt-2 text-sm"></div>
         </div>
-      </div>
-      <div class="bg-card border border-gray-200 rounded-xl p-5" data-admin-card="taskChecklist">
-        <h2 class="font-display text-lg mb-2 text-forest-dark">📋 학급 업무 체크리스트</h2>
-        <p class="text-xs text-gray-500 mb-3">학급 운영에 필요한 할 일을 적어두고 체크해가며 관리하세요. 교사만 볼 수 있어요.</p>
-        <div class="flex gap-2 mb-3">
-          <input id="newTaskInput" placeholder="할 일을 입력하세요" class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm" onkeydown="if(event.key==='Enter') addTask()">
-          <button onclick="addTask()" class="bg-forest text-white px-4 rounded-lg text-sm font-semibold hover:bg-forest-dark">추가</button>
-        </div>
-        <div id="taskChecklistList" class="space-y-1.5 text-sm max-h-[320px] overflow-y-auto pr-1"></div>
       </div>
       <div class="bg-card border border-gray-200 rounded-xl p-5 lg:col-span-2" data-admin-card="certRoadmap">
         <button id="adminCollapseBtn_certRoadmap" onclick="toggleAdminCollapse('certRoadmap')" aria-expanded="false" class="admin-collapse-btn">
@@ -2753,6 +2781,7 @@ const NAV_ITEMS = [
   { key: 'wall', label: '담벼락' },
   { key: 'students', label: '학생 명단', teacherOnly: true },
   { key: 'admin', label: '관리자', teacherOnly: true },
+  { key: 'tasks', label: '빠른메모/체크리스트', teacherOnly: true },
 ];
 function navLabel(key, fallback){
   return (settingsCache && settingsCache.navLabels && settingsCache.navLabels[key]) || fallback;
@@ -2870,6 +2899,7 @@ function renderView(key){
     if (key==='students') renderStudents();
     if (key==='notices') renderNotices();
     if (key==='admin') renderAdmin();
+    if (key==='tasks') renderTaskChecklist();
   }
   renderNav();
   applyPageFontScale(key);
@@ -7219,7 +7249,6 @@ function navDrop(e, i){
 const ADMIN_CARD_LABELS = {
   shareLink: '🔗 학생 공유 링크 & QR',
   attendanceGeo: '📍 등교 확인 QR (위치 기반)',
-  taskChecklist: '📋 학급 업무 체크리스트',
   certRoadmap: '🏅 자격증 안내 로드맵 편집',
   noticesManage: '📢 공유 페이지(공지사항) 관리',
   liveNote: '📌 실시간 포스트잇 메시지',
@@ -7459,34 +7488,42 @@ function removePersonalLink(i){
   renderPersonalLinksInputs();
 }
 function renderTaskChecklist(){
-  const el = document.getElementById('taskChecklistList');
-  if (!el) return;
-  el.innerHTML = tasksCache.length ? tasksCache.map(t => {
-    const d = new Date(t.createdAt || Date.now());
-    const dateLabel = `${pad2(d.getMonth() + 1)}/${pad2(d.getDate())}`;
-    if (editingTaskId === t.id) {
-      // 할 일 내용이 긴 문단인 경우가 많아서(줄바꿈 여러 개), 한 줄짜리 input에 우겨넣으면
-      // 글자 길이만큼 input이 늘어나면서 저장·취소 버튼이 화면 밖으로 밀려나 안 눌리는
-      // 문제가 있었다 — textarea로 바꾸고 버튼을 아래 별도 줄에 둔다.
-      return `
-      <div class="bg-white border border-forest rounded-lg px-3 py-2">
-        <span class="font-mono text-xs text-gray-400">${dateLabel}</span>
-        <textarea id="editTaskInput_${t.id}" rows="3" class="w-full border border-gray-300 rounded px-2 py-1.5 text-sm mt-1 mb-1.5">${escapeHtml(t.text || '')}</textarea>
-        <div class="flex gap-2">
-          <button onclick="saveEditTask('${t.id}')" class="text-xs font-semibold text-forest-dark">저장</button>
-          <button onclick="cancelEditTask()" class="text-xs text-gray-400">취소</button>
-        </div>
-      </div>`;
-    }
+  renderTaskChecklistFor('class', 'taskChecklistList_class');
+  renderTaskChecklistFor('personal', 'taskChecklistList_personal');
+}
+function taskItemHtml(t){
+  const d = new Date(t.createdAt || Date.now());
+  const dateLabel = `${pad2(d.getMonth() + 1)}/${pad2(d.getDate())}`;
+  if (editingTaskId === t.id) {
+    // 할 일 내용이 긴 문단인 경우가 많아서(줄바꿈 여러 개), 한 줄짜리 input에 우겨넣으면
+    // 글자 길이만큼 input이 늘어나면서 저장·취소 버튼이 화면 밖으로 밀려나 안 눌리는
+    // 문제가 있었다 — textarea로 바꾸고 버튼을 아래 별도 줄에 둔다.
     return `
-    <div class="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-3 py-2">
-      <input type="checkbox" ${t.done ? 'checked' : ''} onchange="toggleTask('${t.id}', ${!!t.done})" class="w-4 h-4 accent-forest shrink-0">
-      <span class="font-mono text-xs text-gray-400 shrink-0">${dateLabel}</span>
-      <span class="flex-1 ${t.done ? 'line-through text-gray-400' : 'text-ink'}">${escapeHtml(t.text || '')}</span>
-      <button onclick="startEditTask('${t.id}')" class="text-gray-300 hover:text-forest-dark text-xs shrink-0">수정</button>
-      <button onclick="deleteTask('${t.id}')" class="text-gray-300 hover:text-brick text-lg leading-none shrink-0">&times;</button>
+    <div class="bg-white border border-forest rounded-lg px-3 py-2">
+      <span class="font-mono text-xs text-gray-400">${dateLabel}</span>
+      <textarea id="editTaskInput_${t.id}" rows="3" class="w-full border border-gray-300 rounded px-2 py-1.5 text-sm mt-1 mb-1.5">${escapeHtml(t.text || '')}</textarea>
+      <div class="flex gap-2">
+        <button onclick="saveEditTask('${t.id}')" class="text-xs font-semibold text-forest-dark">저장</button>
+        <button onclick="cancelEditTask()" class="text-xs text-gray-400">취소</button>
+      </div>
     </div>`;
-  }).join('') : '<p class="text-xs text-gray-400">등록된 할 일이 없습니다.</p>';
+  }
+  const imageHtml = t.imageUrl ? `<img src="${escapeAttr(t.imageUrl)}" onclick="openTaskImageZoom('${escapeAttr(t.imageUrl)}')" class="w-10 h-10 rounded object-cover border border-gray-200 cursor-zoom-in shrink-0">` : '';
+  return `
+  <div class="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-3 py-2">
+    <input type="checkbox" ${t.done ? 'checked' : ''} onchange="toggleTask('${t.id}', ${!!t.done})" class="w-4 h-4 accent-forest shrink-0">
+    <span class="font-mono text-xs text-gray-400 shrink-0">${dateLabel}</span>
+    ${imageHtml}
+    <span class="flex-1 ${t.done ? 'line-through text-gray-400' : 'text-ink'}">${escapeHtml(t.text || '')}</span>
+    <button onclick="startEditTask('${t.id}')" class="text-gray-300 hover:text-forest-dark text-xs shrink-0">수정</button>
+    <button onclick="deleteTask('${t.id}')" class="text-gray-300 hover:text-brick text-lg leading-none shrink-0">&times;</button>
+  </div>`;
+}
+function renderTaskChecklistFor(category, elId){
+  const el = document.getElementById(elId);
+  if (!el) return;
+  const list = tasksCache.filter(t => (t.category || 'class') === category);
+  el.innerHTML = list.length ? list.map(taskItemHtml).join('') : '<p class="text-xs text-gray-400">등록된 할 일이 없습니다.</p>';
 }
 function startEditTask(id){
   editingTaskId = id;
@@ -7507,12 +7544,49 @@ function saveEditTask(id){
     .then(() => { editingTaskId = null; renderTaskChecklist(); })
     .catch(err => alert('수정에 실패했습니다: ' + err.message));
 }
-function addTask(){
-  const input = document.getElementById('newTaskInput');
+let taskImageDataUrl = { class: null, personal: null };
+function removeTaskImage(category){
+  taskImageDataUrl[category] = null;
+  document.getElementById('taskImagePreviewWrap_' + category).classList.add('hidden');
+  document.getElementById('taskImagePreview_' + category).src = '';
+}
+function openTaskImageZoom(url){
+  document.getElementById('taskImageZoomImg').src = url;
+  document.getElementById('taskImageZoomModal').classList.remove('hidden');
+}
+function closeTaskImageZoom(){
+  document.getElementById('taskImageZoomModal').classList.add('hidden');
+}
+// 할 일 입력칸에 캡처한 화면을 Ctrl+V로 바로 붙여넣을 수 있게 한다(공지 작성칸과 같은 방식).
+['class', 'personal'].forEach(category => {
+  const input = document.getElementById('newTaskInput_' + category);
+  if (!input) return;
+  input.addEventListener('paste', (e) => {
+    const items = e.clipboardData && e.clipboardData.items;
+    if (!items) return;
+    for (const item of items) {
+      if (item.type && item.type.startsWith('image/')) {
+        const file = item.getAsFile();
+        if (!file) continue;
+        compressImageFile(file, 900, 0.7).then(dataUrl => {
+          if (dataUrl.length > 900000) return alert('이미지 용량이 너무 큽니다. 더 작거나 단순한 사진으로 다시 시도해주세요.');
+          taskImageDataUrl[category] = dataUrl;
+          document.getElementById('taskImagePreview_' + category).src = dataUrl;
+          document.getElementById('taskImagePreviewWrap_' + category).classList.remove('hidden');
+        }).catch(() => alert('이미지를 처리하는 중 문제가 발생했습니다.'));
+        e.preventDefault();
+        break;
+      }
+    }
+  });
+});
+function addTask(category){
+  const input = document.getElementById('newTaskInput_' + category);
   const text = input.value.trim();
   if (!text) return;
-  classCol('tasks').add({ text, done: false, createdAt: Date.now() })
-    .then(() => { input.value = ''; })
+  const imageUrl = taskImageDataUrl[category] || null;
+  classCol('tasks').add({ text, done: false, createdAt: Date.now(), category, imageUrl })
+    .then(() => { input.value = ''; removeTaskImage(category); })
     .catch(err => alert('할 일 추가에 실패했습니다: ' + err.message));
 }
 function toggleTask(id, current){
@@ -7570,7 +7644,6 @@ function resetCertRoadmap(){
 }
 function renderAdmin(){
   if (!ensureTeacherAccess()) return;
-  renderTaskChecklist();
   renderPersonalLinksInputs();
   renderCertRoadmapForm();
   renderAdminCardOrderList();
