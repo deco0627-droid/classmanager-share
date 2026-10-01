@@ -749,6 +749,24 @@ service cloud.firestore {
       </div>
     </div>
 
+    <div class="mb-4">
+      <button onclick="toggleStudentBulkPanel()" class="flex items-center gap-1 text-sm font-semibold text-gray-500 mb-1">
+        📋 번호·이름 붙여넣기로 한 번에 등록 <span id="studentBulkToggleIcon">▸</span>
+      </button>
+      <div id="studentBulkPanel" class="hidden bg-card border border-gray-200 rounded-xl p-4 mt-1">
+        <p class="text-xs text-gray-400 mb-2">엑셀·구글시트에서 번호·이름 두 칸을 그대로 복사해서 붙여넣으세요. 줄마다 "번호 이름"이면 자동으로 인식됩니다.</p>
+        <textarea id="studentBulkInput" oninput="previewStudentBulk()" rows="6" placeholder="1&#9;강승우&#10;2&#9;김민권" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono mb-2"></textarea>
+        <div id="studentBulkPreview" class="text-xs text-gray-500 mb-2"></div>
+        <div class="flex items-center gap-2 flex-wrap">
+          <label class="text-xs border border-gray-300 px-3 py-1.5 rounded-lg hover:bg-gray-50 cursor-pointer">
+            📁 엑셀/CSV 파일 선택
+            <input type="file" accept=".xlsx,.xls,.csv" class="hidden" onchange="handleStudentFileUpload(event)">
+          </label>
+          <button onclick="commitStudentBulk()" class="bg-forest text-white px-4 py-1.5 rounded-lg text-sm font-semibold hover:bg-forest-dark">일괄 등록</button>
+        </div>
+      </div>
+    </div>
+
     <div id="ladderModal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onclick="if(event.target===this) closeLadderGame()">
       <div class="bg-card rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6">
         <div class="flex items-center justify-between mb-4">
@@ -5581,6 +5599,12 @@ function parseStudentBulkText(text){
     results.push({ number, name });
   });
   return results;
+}
+function toggleStudentBulkPanel(){
+  const panel = document.getElementById('studentBulkPanel');
+  const icon = document.getElementById('studentBulkToggleIcon');
+  const nowHidden = panel.classList.toggle('hidden');
+  icon.textContent = nowHidden ? '▸' : '▾';
 }
 function previewStudentBulk(){
   const text = document.getElementById('studentBulkInput').value;
