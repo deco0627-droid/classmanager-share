@@ -8,8 +8,13 @@ service cloud.firestore {
     }
     // 반마다 담당 선생님이 다르므로, classes/{classId} 문서의 teacherEmail 필드를 그때그때
     // 읽어서 확인한다 (get()은 이 규칙 하나당 Firestore 읽기 1회로 계산됨).
+    // exists() 없이 바로 get(...).data.teacherEmail을 쓰면, 반 문서 자체가 아직 없거나
+    // teacherEmail 필드가 비어있는 반(이번에 만든 데모 반 같은 경우)에서 규칙이 에러로
+    // 죽어버려 교사 본인도 접근이 막히는 문제가 있었다 — exists() 확인 + get(key, 기본값)으로
+    // 안전하게 null을 돌려주게 고쳤다.
     function classTeacherEmail(classId) {
-      return get(/databases/$(database)/documents/classes/$(classId)).data.teacherEmail;
+      let classPath = /databases/$(database)/documents/classes/$(classId);
+      return exists(classPath) ? get(classPath).data.get('teacherEmail', null) : null;
     }
     function isClassTeacher(classId) {
       return isSuperAdmin() || (request.auth != null && request.auth.token.email == classTeacherEmail(classId));
@@ -31,7 +36,18 @@ service cloud.firestore {
     match /classes/{classId}/visitLog/{doc}       { allow read, write: if true; }
     match /classes/{classId}/wallPosts/{doc}      { allow read: if resource.data.isPrivate == false || isClassTeacher(classId); allow create: if request.auth != null && request.resource.data.authorEmail == request.auth.token.email; allow update, delete: if isClassTeacher(classId) || (request.auth != null && request.auth.token.email == resource.data.authorEmail); }
     match /classes/{classId}/attendance/{doc}     { allow read, create: if true; allow update, delete: if isClassTeacher(classId); }
-    match /classes/{classId}/fcmTokens/{doc}      { allow read: if isClassTeacher(classId); allow write: if true; }
+    // 학생은 로그인 없이 쓰는 앱이라 "본인 토큰만" 같은 신원 기반 제한을 걸 수 없다 — create·update는
+    // 누구나 등록할 수 있게 열어두되, 등록하는 값이 최소한 문자열인지 형태 검증만 추가한다(완전한
+    // 보안은 아니지만 쓰레기 데이터 주입은 막는다). delete도 열어두는 이유: 학생이 알림을 끄면
+    // 자기 기기 토큰을 자기가 직접 지우는데(로그인이 없어 "본인 것"인지 검증할 방법이 없음), 교사
+    // 전용으로 막으면 학생이 알림을 끌 수 없게 된다.
+    match /classes/{classId}/fcmTokens/{doc} {
+      allow read: if isClassTeacher(classId);
+      allow create, update: if
+        (!('token' in request.resource.data) || request.resource.data.token is string) &&
+        (!('name' in request.resource.data) || request.resource.data.name is string);
+      allow delete: if true;
+    }
     match /classes/{classId}/tetrisScores/{doc}   { allow read, create: if true; allow update, delete: if isClassTeacher(classId); }
     match /classes/{classId}/counselingSlots/{doc} { allow read, write: if isClassTeacher(classId); }
     match /classes/{classId}/liveNotes/{doc}      { allow read, write: if isClassTeacher(classId); }
