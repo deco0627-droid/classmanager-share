@@ -32,6 +32,7 @@ service cloud.firestore {
     match /classes/{classId}/students/{doc}       { allow read, write: if isClassTeacher(classId); }
     match /classes/{classId}/customPages/{doc}    { allow read: if true; allow write: if isClassTeacher(classId); }
     match /classes/{classId}/certExams/{doc}      { allow read: if true; allow write: if isClassTeacher(classId); }
+    match /classes/{classId}/certNotices/{doc}    { allow read: if true; allow write: if isClassTeacher(classId); }
     match /classes/{classId}/stats/{doc}          { allow read: if true; allow write: if true; }
     match /classes/{classId}/visitLog/{doc}       { allow read, write: if true; }
     match /classes/{classId}/wallPosts/{doc}      { allow read: if resource.data.isPrivate == false || isClassTeacher(classId); allow create: if request.auth != null && request.resource.data.authorEmail == request.auth.token.email; allow update, delete: if isClassTeacher(classId) || (request.auth != null && request.auth.token.email == resource.data.authorEmail); }

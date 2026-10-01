@@ -150,9 +150,24 @@
   .admin-collapse-btn { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px; text-align: left; }
   .admin-collapse-chevron { display: inline-block; color: #8FA89C; font-size: 12px; transition: transform .15s ease; flex-shrink: 0; }
   .admin-collapse-btn[aria-expanded="true"] .admin-collapse-chevron { transform: rotate(90deg); }
+
+  /* 마우스가 있는 기기에서만, 클릭 가능한 요소 위에서 기본 커서 대신 마스코트가 통통 뛰는
+     커서로 보이게 한다(냅코 사이트와 같은 방식). 터치 기기는 그대로 둔다. */
+  @media (hover: hover) and (pointer: fine) {
+    a, button, [role="button"] { cursor: none; }
+  }
+  @keyframes mascotCursorBounce { 0%, 100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-8px) scale(1.05); } }
+  @keyframes mascotCursorClick { 0% { transform: scale(1); } 40% { transform: scale(0.7); } 100% { transform: scale(1); } }
+  #mascotCursor { position: fixed; left: 0; top: 0; z-index: 999; pointer-events: none; transform: translate(-9999px, -9999px); opacity: 0; transition: opacity .15s ease; }
+  #mascotCursor.visible { opacity: 1; }
+  #mascotCursor svg { width: 22px; height: 22px; filter: drop-shadow(0 2px 4px rgba(0,0,0,.35)); }
+  #mascotCursor.bouncing svg { animation: mascotCursorBounce 0.6s ease-in-out infinite; }
+  #mascotCursor.clicking svg { animation: mascotCursorClick 0.22s ease-out; }
 </style>
 </head>
 <body class="min-h-screen">
+
+<div id="mascotCursor" aria-hidden="true"><svg viewBox="0 0 64 64" role="img"><rect width="64" height="64" rx="16" fill="#E7F5E2"/><path d="M32 10 Q30 6 33 4" stroke="#5B3A1E" stroke-width="2.2" stroke-linecap="round" fill="none"/><path d="M16 24 Q16 12 32 12 Q48 12 48 24 Q48 29 32 29 Q16 29 16 24Z" fill="#8B5E3C"/><path d="M18 18 Q32 24 46 18" stroke="#6B4226" stroke-width="1.4" fill="none" opacity="0.55"/><path d="M19 22 Q32 27.5 45 22" stroke="#6B4226" stroke-width="1.4" fill="none" opacity="0.55"/><path d="M18 26 Q16 44 32 54 Q48 44 46 26 Q32 32 18 26Z" fill="#D9A066"/><circle cx="27" cy="38" r="2" fill="#4A2E10"/><circle cx="37" cy="38" r="2" fill="#4A2E10"/><path d="M27 44 Q32 48 37 44" stroke="#4A2E10" stroke-width="2" stroke-linecap="round" fill="none"/><ellipse cx="22" cy="41" rx="2.4" ry="1.5" fill="#E8956B" opacity="0.5"/><ellipse cx="42" cy="41" rx="2.4" ry="1.5" fill="#E8956B" opacity="0.5"/><rect x="39" y="45" width="22" height="16" rx="2.5" fill="#FDF6E9"/><path d="M43 50 Q49 47.5 55 50" stroke="#5DB56D" stroke-width="1.6" fill="none" stroke-linecap="round"/><path d="M43 54.5 Q48 53 53 54.5" stroke="#5DB56D" stroke-width="1.6" fill="none" stroke-linecap="round"/><line x1="44" y1="34" x2="54" y2="46" stroke="#F5B942" stroke-width="4" stroke-linecap="round"/><circle cx="43" cy="33" r="2.2" fill="#E86B5C"/><circle cx="55" cy="47" r="1.4" fill="#3A2A1A"/></svg></div>
 
 <!-- ===================== Firebase 설정 필요 안내 (설정 전까지 표시) ===================== -->
 <div id="setupNotice" class="hidden fixed inset-0 bg-ink z-[100] text-white overflow-y-auto">
@@ -551,12 +566,17 @@ service cloud.firestore {
     <div class="grid grid-cols-1 xl:grid-cols-3 gap-5">
       <div class="xl:col-span-2 space-y-5">
         <div class="bg-card border border-gray-200 rounded-xl p-5">
-          <h2 class="font-display text-lg mb-3 text-forest-dark">📋 안내 사항</h2>
-          <div id="certGuideView" class="text-sm text-gray-700 whitespace-pre-line"></div>
-          <div id="certGuideEditArea" class="hidden mt-4 pt-4 border-t border-gray-200">
-            <textarea id="certGuideField" rows="6" placeholder="자격증 신청 방법, 준비물, 유의사항 등을 입력하세요" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"></textarea>
-            <button onclick="saveCertGuide()" class="mt-2 bg-forest text-white px-4 py-2 rounded-lg text-sm font-semibold">저장</button>
+          <h2 class="font-display text-lg mb-3 text-forest-dark">🗺️ 진로 로드맵</h2>
+          <div id="certRoadmapView" class="text-sm text-gray-700"></div>
+        </div>
+        <div class="bg-card border border-gray-200 rounded-xl p-5">
+          <h2 class="font-display text-lg mb-3 text-forest-dark">📋 안내 게시판</h2>
+          <div id="certNoticeForm" class="hidden mb-4 pb-4 border-b border-gray-200">
+            <input id="certNoticeTitleInput" placeholder="제목" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mb-2 font-semibold">
+            <textarea id="certNoticeContentInput" rows="4" placeholder="자격증 신청 방법, 준비물, 유의사항 등을 입력하세요" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mb-2"></textarea>
+            <button onclick="addCertNotice()" class="bg-forest text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-forest-dark">등록</button>
           </div>
+          <div id="certNoticeList" class="space-y-3"></div>
         </div>
         <div id="certExamBulkPanel" class="hidden bg-card border border-amber/40 rounded-xl p-5">
           <h2 class="font-display text-lg mb-2 text-forest-dark">📋 붙여넣기로 일정 일괄 등록</h2>
@@ -1092,16 +1112,8 @@ service cloud.firestore {
           <span class="admin-collapse-chevron">▶</span>
         </button>
         <div id="adminCollapseBody_certRoadmap" class="hidden mt-3">
-          <div class="bg-forest-light/40 border border-forest/30 rounded-lg p-3 mb-4">
-            <p class="text-xs text-gray-500 mb-2">자유 안내문을 입력하면 학생들에게는 <b>아래 로드맵 대신 이 글이</b> 보입니다. 로드맵을 다시 보이게 하려면 비우고 저장(또는 "지우고 로드맵 보이기")하세요.</p>
-            <textarea id="certGuideFieldAdmin" rows="4" placeholder="예: 자격증 신청 방법, 준비물, 유의사항 등 (비워두면 아래 로드맵이 보입니다)" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mb-2"></textarea>
-            <div class="flex gap-2">
-              <button onclick="saveCertGuideFromAdmin()" class="bg-forest text-white px-4 py-1.5 rounded-lg text-sm font-semibold hover:bg-forest-dark">안내문 저장</button>
-              <button onclick="clearCertGuideFromAdmin()" class="text-xs border border-gray-300 px-3 py-1.5 rounded-lg hover:bg-gray-50">지우고 로드맵 보이기</button>
-            </div>
-          </div>
           <div class="flex items-center justify-between mb-2">
-            <p class="text-xs text-gray-500 flex-1">위 안내문이 비어 있을 때 자격증 안내 페이지에 보이는 기본 로드맵이에요. 카드 디자인(색상)은 그대로 두고 아래 글자만 바꿀 수 있어요.</p>
+            <p class="text-xs text-gray-500 flex-1">자격증 안내 페이지 상단에 항상 보이는 진로 로드맵이에요. 카드 디자인(색상)은 그대로 두고 아래 글자만 바꿀 수 있어요.</p>
             <button onclick="resetCertRoadmap()" class="text-xs text-gray-400 hover:text-brick shrink-0 ml-2">기본값으로 초기화</button>
           </div>
 
@@ -2092,7 +2104,7 @@ function mkStudent(name, number){
 }
 function defaultSettings(){
   return {
-    className: '학급 수첩', certificateTypes: [...DEFAULT_CERT_TYPES], timetable: {}, certGuide: '', certRoadmap: null,
+    className: '학급 수첩', certificateTypes: [...DEFAULT_CERT_TYPES], timetable: {}, certRoadmap: null,
     healthPassword: 'health1234',
     consultPassword: 'consult1234',
     assignmentPassword: '4321',
@@ -2219,6 +2231,38 @@ function setupBrandLongPress(){
   el.addEventListener('pointercancel', cancel);
   el.addEventListener('contextmenu', e => e.preventDefault());
 }
+// 냅코(napko-frc) 사이트와 같은 방식 — 마우스가 있는 기기에서 클릭 가능한 요소 위에 있을 때만
+// 기본 커서 대신 마스코트가 통통 뛰는 걸로 보이고, 클릭하면 살짝 눌리는 효과를 준다.
+(function setupMascotCursor(){
+  const el = document.getElementById('mascotCursor');
+  if (!el) return;
+  function isInteractive(target){
+    return target instanceof Element && target.closest('a, button, [role="button"]');
+  }
+  let hovering = false;
+  window.addEventListener('mousemove', (e) => {
+    el.style.transform = `translate(${e.clientX - 11}px, ${e.clientY - 11}px)`;
+    const nowHover = !!isInteractive(e.target);
+    if (nowHover !== hovering) {
+      hovering = nowHover;
+      el.classList.toggle('visible', hovering);
+      el.classList.toggle('bouncing', hovering);
+    }
+  });
+  window.addEventListener('mousedown', (e) => {
+    if (!isInteractive(e.target)) return;
+    el.classList.remove('bouncing');
+    el.classList.add('clicking');
+  });
+  window.addEventListener('mouseup', () => {
+    el.classList.remove('clicking');
+    if (hovering) el.classList.add('bouncing');
+  });
+  window.addEventListener('mouseleave', () => {
+    hovering = false;
+    el.classList.remove('visible', 'bouncing');
+  });
+})();
 function openPushSettingsModal(){
   renderPushSettingsModal();
   document.getElementById('pushSettingsModal').classList.remove('hidden');
@@ -2422,6 +2466,10 @@ function continueBootstrapApp(){
     certExamsCache = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => (a.date||'').localeCompare(b.date||''));
     if (currentView === 'certinfo') renderCertInfo();
   });
+  classCol('certNotices').onSnapshot(snap => {
+    certNoticesCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    if (currentView === 'certinfo') renderCertNoticeList();
+  }, err => console.error('certNotices 컬렉션을 불러오지 못했습니다 (Firestore 보안 규칙을 확인하세요):', err));
   classCol('tasks').onSnapshot(snap => {
     // 최근에 입력한 항목을 위에서 바로 보이게, 오래된 순이 아니라 최신순으로 둔다.
     tasksCache = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => (b.createdAt||0)-(a.createdAt||0));
@@ -2455,7 +2503,7 @@ function continueBootstrapApp(){
     document.getElementById('certExamAddForm').classList.toggle('hidden', !isTeacher);
     document.getElementById('certExamAddForm').classList.toggle('flex', isTeacher);
     document.getElementById('certExamBulkPanel').classList.toggle('hidden', !isTeacher);
-    document.getElementById('certGuideEditArea').classList.toggle('hidden', !isTeacher);
+    document.getElementById('certNoticeForm').classList.toggle('hidden', !isTeacher);
     document.getElementById('cleaningPhotoUploadLabel').classList.toggle('hidden', !isTeacher);
     document.getElementById('clubPhotoUploadLabel').classList.toggle('hidden', !isTeacher);
     syncAssignmentPhotoButtons();
@@ -4272,12 +4320,7 @@ function getCertRoadmap(){
     outro: { ...DEFAULT_CERT_ROADMAP.outro, ...(saved.outro || {}) },
   };
 }
-function renderCertGuideHtml(value){
-  const text = (value || '').trim();
-  if (text) {
-    return `<div class="whitespace-pre-line text-sm leading-relaxed text-gray-700">${escapeHtml(text)}</div>`;
-  }
-
+function renderCertRoadmapOnlyHtml(){
   // 주의: 이 커스텀 폰트(ElectricalSafety)는 line-height를 명시해도 태그 사이의 줄바꿈/공백 텍스트 노드가
   // 자체적으로 큰 줄높이를 차지해서 보이지 않는 여백처럼 보인다. 그래서 태그 사이에 공백을 절대 넣지 않는다.
   const data = getCertRoadmap();
@@ -4290,8 +4333,9 @@ function renderCertGuideHtml(value){
   return `<div class="space-y-1"><div class="rounded-2xl border border-forest/20 bg-forest-light/60 p-2" style="line-height:1.1"><h3 class="font-display text-lg text-forest-dark">${escapeHtml(data.intro.title)}</h3><p class="text-sm text-gray-600" style="line-height:1.1; margin:2px 0 0 0;">${escapeHtml(data.intro.text)}</p></div><div class="grid grid-cols-1 sm:grid-cols-3 gap-1">${semesterCards}</div><div class="rounded-2xl border border-forest/20 bg-forest-light/60 p-1.5" style="line-height:1.1"><p class="text-sm font-bold text-forest-dark" style="margin:0 0 2px 0;">${escapeHtml(data.outro.title)}</p><p class="text-xs text-gray-600" style="line-height:1.1;">${escapeHtml(data.outro.text)}</p></div></div>`;
 }
 function renderCertInfo(){
-  document.getElementById('certGuideView').innerHTML = renderCertGuideHtml(settingsCache.certGuide);
-  if (isTeacher) document.getElementById('certGuideField').value = settingsCache.certGuide || '';
+  document.getElementById('certRoadmapView').innerHTML = renderCertRoadmapOnlyHtml();
+  document.getElementById('certNoticeForm').classList.toggle('hidden', !isTeacher);
+  renderCertNoticeList();
   const sorted = [...certExamsCache].sort((a,b) => (a.date||'').localeCompare(b.date||''));
   document.getElementById('certExamList').innerHTML = sorted.length ? sorted.map(c => `
     <div class="flex items-center justify-between bg-card border border-gray-200 rounded-lg px-3 py-2">
@@ -4308,10 +4352,68 @@ function renderCertInfo(){
   document.getElementById('certQnetLinks').innerHTML = (certLinksHtml + extraLinksHtml)
     || `<p class="text-gray-400 text-sm">등록된 자격증 종류가 없습니다. 관리자 탭에서 추가해주세요.</p>`;
 }
-function saveCertGuide(){
-  settingsCache.certGuide = document.getElementById('certGuideField').value;
-  classCol('settings').doc('general').set({ certGuide: settingsCache.certGuide }, { merge: true });
-  alert('안내 사항이 저장되었습니다.');
+let certNoticesCache = [];
+let editingCertNoticeId = null;
+function renderCertNoticeList(){
+  const el = document.getElementById('certNoticeList');
+  if (!el) return;
+  const sorted = [...certNoticesCache].sort((a,b) => (b.createdAt||0)-(a.createdAt||0));
+  el.innerHTML = sorted.length ? sorted.map(n => {
+    const d = new Date(n.createdAt || Date.now());
+    const dateLabel = `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+    if (editingCertNoticeId === n.id) {
+      return `
+      <div class="border border-forest rounded-lg p-3">
+        <input id="editCertNoticeTitle_${n.id}" value="${escapeAttr(n.title || '')}" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mb-2 font-semibold">
+        <textarea id="editCertNoticeContent_${n.id}" rows="4" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mb-2">${escapeHtml(n.content || '')}</textarea>
+        <div class="flex gap-2">
+          <button onclick="saveEditCertNotice('${n.id}')" class="text-xs font-semibold text-forest-dark">저장</button>
+          <button onclick="cancelEditCertNotice()" class="text-xs text-gray-400">취소</button>
+        </div>
+      </div>`;
+    }
+    return `
+    <div class="border border-gray-200 rounded-lg p-3">
+      <div class="flex items-start justify-between gap-2">
+        <p class="font-semibold">${escapeHtml(n.title || '(제목 없음)')}</p>
+        ${isTeacher ? `<div class="flex gap-2 shrink-0">
+          <button onclick="startEditCertNotice('${n.id}')" class="text-gray-300 hover:text-forest-dark text-xs">수정</button>
+          <button onclick="deleteCertNotice('${n.id}')" class="text-gray-300 hover:text-brick text-lg leading-none">&times;</button>
+        </div>` : ''}
+      </div>
+      <p class="text-xs text-gray-400 font-mono mb-1">${dateLabel}</p>
+      <p class="text-sm text-gray-700 whitespace-pre-line">${escapeHtml(n.content || '')}</p>
+    </div>`;
+  }).join('') : '<p class="text-sm text-gray-400">등록된 안내가 없습니다.</p>';
+}
+function addCertNotice(){
+  const titleInput = document.getElementById('certNoticeTitleInput');
+  const contentInput = document.getElementById('certNoticeContentInput');
+  const title = titleInput.value.trim();
+  const content = contentInput.value.trim();
+  if (!title && !content) return;
+  classCol('certNotices').add({ title, content, createdAt: Date.now() })
+    .then(() => { titleInput.value = ''; contentInput.value = ''; })
+    .catch(err => alert('등록에 실패했습니다: ' + err.message));
+}
+function startEditCertNotice(id){
+  editingCertNoticeId = id;
+  renderCertNoticeList();
+}
+function cancelEditCertNotice(){
+  editingCertNoticeId = null;
+  renderCertNoticeList();
+}
+function saveEditCertNotice(id){
+  const title = document.getElementById('editCertNoticeTitle_' + id).value.trim();
+  const content = document.getElementById('editCertNoticeContent_' + id).value.trim();
+  classCol('certNotices').doc(id).update({ title, content, updatedAt: Date.now() })
+    .then(() => { editingCertNoticeId = null; renderCertNoticeList(); })
+    .catch(err => alert('수정에 실패했습니다: ' + err.message));
+}
+function deleteCertNotice(id){
+  if (!confirm('이 안내를 삭제할까요?')) return;
+  classCol('certNotices').doc(id).delete().catch(err => alert('삭제에 실패했습니다: ' + err.message));
 }
 function addCertExam(){
   const title = document.getElementById('certExamTitle').value.trim();
@@ -7620,17 +7722,6 @@ function renderCertRoadmapForm(){
     </div>`).join('');
   document.getElementById('certRoadmapOutroTitle').value = data.outro.title;
   document.getElementById('certRoadmapOutroText').value = data.outro.text;
-  document.getElementById('certGuideFieldAdmin').value = settingsCache.certGuide || '';
-}
-function saveCertGuideFromAdmin(){
-  const value = document.getElementById('certGuideFieldAdmin').value;
-  settingsCache.certGuide = value;
-  classCol('settings').doc('general').set({ certGuide: value }, { merge: true });
-  alert(value.trim() ? '안내문이 저장되었습니다. 학생들에게는 이제 로드맵 대신 이 글이 보여요.' : '안내문을 비웠습니다. 학생들에게는 이제 로드맵이 보여요.');
-}
-function clearCertGuideFromAdmin(){
-  document.getElementById('certGuideFieldAdmin').value = '';
-  saveCertGuideFromAdmin();
 }
 function saveCertRoadmap(){
   const certRoadmap = {
