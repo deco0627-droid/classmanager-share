@@ -989,10 +989,10 @@ service cloud.firestore {
       <div class="bg-card border border-gray-200 rounded-xl p-5">
         <h2 class="font-display text-lg mb-2 text-forest-dark">🏫 학급 업무</h2>
         <p class="text-xs text-gray-500 mb-3">학급 운영에 필요한 할 일을 적어두고 체크해가며 관리하세요.</p>
-        <textarea id="newTaskInput_class" rows="2" placeholder="할 일을 입력하세요 (Enter: 줄바꿈, Ctrl+Enter: 추가, 화면 캡처는 Ctrl+V)" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mb-1.5" onkeydown="if(event.key==='Enter' && (event.ctrlKey||event.metaKey)){ event.preventDefault(); addTask('class'); }"></textarea>
         <div class="flex justify-end mb-1">
           <button onclick="addTask('class')" class="bg-forest text-white px-4 py-1.5 rounded-lg text-sm font-semibold hover:bg-forest-dark">추가</button>
         </div>
+        <textarea id="newTaskInput_class" rows="2" placeholder="할 일을 입력하세요 (Enter: 줄바꿈, Ctrl+Enter: 추가, 화면 캡처는 Ctrl+V)" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mb-1.5" onkeydown="if(event.key==='Enter' && (event.ctrlKey||event.metaKey)){ event.preventDefault(); addTask('class'); }"></textarea>
         <div id="taskImagePreviewWrap_class" class="hidden mb-3 mt-1 flex items-center gap-2">
           <img id="taskImagePreview_class" class="h-16 rounded-lg border border-gray-200">
           <button onclick="removeTaskImage('class')" class="text-xs text-brick hover:underline">이미지 제거</button>
@@ -1002,10 +1002,10 @@ service cloud.firestore {
       <div class="bg-card border border-gray-200 rounded-xl p-5">
         <h2 class="font-display text-lg mb-2 text-amber">🙋 개인 업무</h2>
         <p class="text-xs text-gray-500 mb-3">본인만 보는 개인 할 일을 적어두고 체크해가며 관리하세요.</p>
-        <textarea id="newTaskInput_personal" rows="2" placeholder="할 일을 입력하세요 (Enter: 줄바꿈, Ctrl+Enter: 추가, 화면 캡처는 Ctrl+V)" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mb-1.5" onkeydown="if(event.key==='Enter' && (event.ctrlKey||event.metaKey)){ event.preventDefault(); addTask('personal'); }"></textarea>
         <div class="flex justify-end mb-1">
           <button onclick="addTask('personal')" class="bg-amber text-white px-4 py-1.5 rounded-lg text-sm font-semibold hover:opacity-90">추가</button>
         </div>
+        <textarea id="newTaskInput_personal" rows="2" placeholder="할 일을 입력하세요 (Enter: 줄바꿈, Ctrl+Enter: 추가, 화면 캡처는 Ctrl+V)" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mb-1.5" onkeydown="if(event.key==='Enter' && (event.ctrlKey||event.metaKey)){ event.preventDefault(); addTask('personal'); }"></textarea>
         <div id="taskImagePreviewWrap_personal" class="hidden mb-3 mt-1 flex items-center gap-2">
           <img id="taskImagePreview_personal" class="h-16 rounded-lg border border-gray-200">
           <button onclick="removeTaskImage('personal')" class="text-xs text-brick hover:underline">이미지 제거</button>
@@ -1092,8 +1092,16 @@ service cloud.firestore {
           <span class="admin-collapse-chevron">▶</span>
         </button>
         <div id="adminCollapseBody_certRoadmap" class="hidden mt-3">
+          <div class="bg-forest-light/40 border border-forest/30 rounded-lg p-3 mb-4">
+            <p class="text-xs text-gray-500 mb-2">자유 안내문을 입력하면 학생들에게는 <b>아래 로드맵 대신 이 글이</b> 보입니다. 로드맵을 다시 보이게 하려면 비우고 저장(또는 "지우고 로드맵 보이기")하세요.</p>
+            <textarea id="certGuideFieldAdmin" rows="4" placeholder="예: 자격증 신청 방법, 준비물, 유의사항 등 (비워두면 아래 로드맵이 보입니다)" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mb-2"></textarea>
+            <div class="flex gap-2">
+              <button onclick="saveCertGuideFromAdmin()" class="bg-forest text-white px-4 py-1.5 rounded-lg text-sm font-semibold hover:bg-forest-dark">안내문 저장</button>
+              <button onclick="clearCertGuideFromAdmin()" class="text-xs border border-gray-300 px-3 py-1.5 rounded-lg hover:bg-gray-50">지우고 로드맵 보이기</button>
+            </div>
+          </div>
           <div class="flex items-center justify-between mb-2">
-            <p class="text-xs text-gray-500 flex-1">자격증 안내 페이지에 별도 안내문(자유 텍스트)을 입력하지 않았을 때 보이는 기본 로드맵이에요. 카드 디자인(색상)은 그대로 두고 아래 글자만 바꿀 수 있어요.</p>
+            <p class="text-xs text-gray-500 flex-1">위 안내문이 비어 있을 때 자격증 안내 페이지에 보이는 기본 로드맵이에요. 카드 디자인(색상)은 그대로 두고 아래 글자만 바꿀 수 있어요.</p>
             <button onclick="resetCertRoadmap()" class="text-xs text-gray-400 hover:text-brick shrink-0 ml-2">기본값으로 초기화</button>
           </div>
 
@@ -7612,6 +7620,17 @@ function renderCertRoadmapForm(){
     </div>`).join('');
   document.getElementById('certRoadmapOutroTitle').value = data.outro.title;
   document.getElementById('certRoadmapOutroText').value = data.outro.text;
+  document.getElementById('certGuideFieldAdmin').value = settingsCache.certGuide || '';
+}
+function saveCertGuideFromAdmin(){
+  const value = document.getElementById('certGuideFieldAdmin').value;
+  settingsCache.certGuide = value;
+  classCol('settings').doc('general').set({ certGuide: value }, { merge: true });
+  alert(value.trim() ? '안내문이 저장되었습니다. 학생들에게는 이제 로드맵 대신 이 글이 보여요.' : '안내문을 비웠습니다. 학생들에게는 이제 로드맵이 보여요.');
+}
+function clearCertGuideFromAdmin(){
+  document.getElementById('certGuideFieldAdmin').value = '';
+  saveCertGuideFromAdmin();
 }
 function saveCertRoadmap(){
   const certRoadmap = {
