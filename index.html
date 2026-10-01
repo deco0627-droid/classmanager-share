@@ -2210,6 +2210,17 @@ if (firebaseConfig.apiKey === "YOUR_API_KEY") {
   firebase.initializeApp(firebaseConfig);
   window.addEventListener('DOMContentLoaded', bootstrapApp);
 }
+// CBT-Program은 이 반과 다른 Firebase 프로젝트(class-manager-3b85d)를 쓰기 때문에, 기본 앱과는
+// 별도로 이름 붙은 두 번째 Firebase 앱을 하나 더 띄워서 그 프로젝트의 cbtSettings(오늘의 QR,
+// 공개 읽기로 열려 있음)만 따로 읽는다 — 이 반의 다른 데이터는 전혀 건드리지 않는다.
+const cbtDb = firebase.initializeApp({
+  apiKey: "AIzaSyBl6Ler-fG-I9aauInrCNADs2s0EO3YztI",
+  authDomain: "class-manager-3b85d.firebaseapp.com",
+  projectId: "class-manager-3b85d",
+  storageBucket: "class-manager-3b85d.firebasestorage.app",
+  messagingSenderId: "882052020372",
+  appId: "1:882052020372:web:69694b36fb296960f65c81",
+}, "cbtProgram").firestore();
 
 let db, auth;
 let isTeacher = false;
@@ -3519,11 +3530,11 @@ function renderCbtQrWidget(){
   // 가져와서 이 반(유한공업고등학교, 또는 학교 미지정) 것만 슬롯별로 골라 쓴다.
   const prefix = 'checkin_' + todayStr();
   Promise.all([
-    db.collection('cbtSettings')
+    cbtDb.collection('cbtSettings')
       .where(firebase.firestore.FieldPath.documentId(), '>=', prefix)
       .where(firebase.firestore.FieldPath.documentId(), '<', prefix + '')
       .get(),
-    db.collection('cbtSettings').doc('qrCutoff').get()
+    cbtDb.collection('cbtSettings').doc('qrCutoff').get()
       .then(doc => (doc.exists && Number.isInteger(doc.data().hour)) ? doc.data().hour : 17),
   ]).then(([snap, cutoffHour]) => {
     const bySlot = {};
@@ -3629,7 +3640,7 @@ function renderDashboard(){
   document.getElementById('dashStampDow').textContent = dow+'요일';
   renderCharacterWord();
   renderDailyLearning();
-  // renderCbtQrWidget(); // 이 사본은 CBT-Program과 다른 Firebase 프로젝트라 아직 연동 전이라 숨김 (나중에 연동 시 이 줄을 되돌리세요)
+  renderCbtQrWidget();
   renderCheckinQrBox();
   applyDashCardOrder();
 
