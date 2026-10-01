@@ -7504,7 +7504,7 @@ function saveEditTask(id){
   const text = input.value.trim();
   if (!text) return alert('내용을 입력해주세요.');
   classCol('tasks').doc(id).update({ text })
-    .then(() => { editingTaskId = null; })
+    .then(() => { editingTaskId = null; renderTaskChecklist(); })
     .catch(err => alert('수정에 실패했습니다: ' + err.message));
 }
 function addTask(){
