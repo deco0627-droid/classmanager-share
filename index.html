@@ -989,9 +989,9 @@ service cloud.firestore {
       <div class="bg-card border border-gray-200 rounded-xl p-5">
         <h2 class="font-display text-lg mb-2 text-forest-dark">🏫 학급 업무</h2>
         <p class="text-xs text-gray-500 mb-3">학급 운영에 필요한 할 일을 적어두고 체크해가며 관리하세요.</p>
-        <div class="flex gap-2 mb-1">
-          <input id="newTaskInput_class" placeholder="할 일을 입력하세요 (화면 캡처는 Ctrl+V)" class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm" onkeydown="if(event.key==='Enter') addTask('class')">
-          <button onclick="addTask('class')" class="bg-forest text-white px-4 rounded-lg text-sm font-semibold hover:bg-forest-dark">추가</button>
+        <textarea id="newTaskInput_class" rows="2" placeholder="할 일을 입력하세요 (Enter: 줄바꿈, Ctrl+Enter: 추가, 화면 캡처는 Ctrl+V)" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mb-1.5" onkeydown="if(event.key==='Enter' && (event.ctrlKey||event.metaKey)){ event.preventDefault(); addTask('class'); }"></textarea>
+        <div class="flex justify-end mb-1">
+          <button onclick="addTask('class')" class="bg-forest text-white px-4 py-1.5 rounded-lg text-sm font-semibold hover:bg-forest-dark">추가</button>
         </div>
         <div id="taskImagePreviewWrap_class" class="hidden mb-3 mt-1 flex items-center gap-2">
           <img id="taskImagePreview_class" class="h-16 rounded-lg border border-gray-200">
@@ -1002,9 +1002,9 @@ service cloud.firestore {
       <div class="bg-card border border-gray-200 rounded-xl p-5">
         <h2 class="font-display text-lg mb-2 text-amber">🙋 개인 업무</h2>
         <p class="text-xs text-gray-500 mb-3">본인만 보는 개인 할 일을 적어두고 체크해가며 관리하세요.</p>
-        <div class="flex gap-2 mb-1">
-          <input id="newTaskInput_personal" placeholder="할 일을 입력하세요 (화면 캡처는 Ctrl+V)" class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm" onkeydown="if(event.key==='Enter') addTask('personal')">
-          <button onclick="addTask('personal')" class="bg-amber text-white px-4 rounded-lg text-sm font-semibold hover:opacity-90">추가</button>
+        <textarea id="newTaskInput_personal" rows="2" placeholder="할 일을 입력하세요 (Enter: 줄바꿈, Ctrl+Enter: 추가, 화면 캡처는 Ctrl+V)" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mb-1.5" onkeydown="if(event.key==='Enter' && (event.ctrlKey||event.metaKey)){ event.preventDefault(); addTask('personal'); }"></textarea>
+        <div class="flex justify-end mb-1">
+          <button onclick="addTask('personal')" class="bg-amber text-white px-4 py-1.5 rounded-lg text-sm font-semibold hover:opacity-90">추가</button>
         </div>
         <div id="taskImagePreviewWrap_personal" class="hidden mb-3 mt-1 flex items-center gap-2">
           <img id="taskImagePreview_personal" class="h-16 rounded-lg border border-gray-200">
@@ -2417,7 +2417,7 @@ function continueBootstrapApp(){
   classCol('tasks').onSnapshot(snap => {
     // 최근에 입력한 항목을 위에서 바로 보이게, 오래된 순이 아니라 최신순으로 둔다.
     tasksCache = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => (b.createdAt||0)-(a.createdAt||0));
-    if (currentView === 'admin') renderTaskChecklist();
+    if (currentView === 'tasks') renderTaskChecklist();
   }, err => console.error('tasks 컬렉션을 불러오지 못했습니다 (Firestore 보안 규칙을 확인하세요):', err));
   startAfterschoolScheduleListener();
   startAfterschoolAttendanceListener();
@@ -7501,7 +7501,7 @@ function taskItemHtml(t){
     return `
     <div class="bg-white border border-forest rounded-lg px-3 py-2">
       <span class="font-mono text-xs text-gray-400">${dateLabel}</span>
-      <textarea id="editTaskInput_${t.id}" rows="3" class="w-full border border-gray-300 rounded px-2 py-1.5 text-sm mt-1 mb-1.5">${escapeHtml(t.text || '')}</textarea>
+      <textarea id="editTaskInput_${t.id}" rows="3" onkeydown="if(event.key==='Enter' && (event.ctrlKey||event.metaKey)){ event.preventDefault(); saveEditTask('${t.id}'); }" class="w-full border border-gray-300 rounded px-2 py-1.5 text-sm mt-1 mb-1.5">${escapeHtml(t.text || '')}</textarea>
       <div class="flex gap-2">
         <button onclick="saveEditTask('${t.id}')" class="text-xs font-semibold text-forest-dark">저장</button>
         <button onclick="cancelEditTask()" class="text-xs text-gray-400">취소</button>
