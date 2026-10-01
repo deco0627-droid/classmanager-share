@@ -3542,7 +3542,13 @@ function renderCbtQrWidget(){
       const parts = d.id.split('_'); // ['checkin', 날짜, 슬롯, 학교?, 반?]
       const slot = parts[2];
       const school = parts[3] || '';
+      const track = parts[4] || '';
       if (school && school !== '유한공업고등학교') return; // 다른 학교가 만든 QR은 이 위젯에 안 보여준다
+      // 쉐어는 여러 반이 같이 쓰므로, 반이 지정된 QR(2학년5반 등)은 이 반 이름과 맞는 것만
+      // 보여준다 — 그래야 다른 반이 방금 만든 QR이 잘못 섞여 보이지 않는다. 학급명에 공백이
+      // 있어도("2학년 5반") CBT 쪽 표기("2학년5반")와 같은 반으로 인식하도록 공백만 지우고 비교한다.
+      // 반이 지정 안 된(원 관리자가 만든) QR은 예전처럼 학교만 맞으면 그대로 보여준다.
+      if (track && track.replace(/\s+/g, '') !== (settingsCache.className || '').replace(/\s+/g, '')) return;
       const data = d.data();
       if (!data.token) return;
       if (!bySlot[slot] || (data.generatedAt || 0) > (bySlot[slot].generatedAt || 0)) bySlot[slot] = data;
