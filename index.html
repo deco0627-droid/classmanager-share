@@ -479,6 +479,7 @@ service cloud.firestore {
             <div class="hidden peer-focus:block absolute left-1/2 -translate-x-1/2 top-full mt-1 z-20 bg-ink text-white text-xs font-semibold px-3 py-1.5 rounded-lg shadow-lg whitespace-nowrap pointer-events-none">예: 2026년 10월 19일 월요일</div>
           </div>
           <button onclick="examBoardNextDay()" title="다음 날짜로 넘어가고, 응시·결시·결번은 비워줍니다. 그 날짜 과목을 미리 입력해뒀으면 자동으로 불러와요." class="text-xs font-semibold text-forest-dark border border-forest rounded-full px-3 py-1 hover:bg-forest-light shrink-0">다음날 →</button>
+          <input type="date" id="examBoardDatePicker" onchange="examBoardPickDate('examBoardDateField', this.value)" title="달력에서 날짜 고르기" class="text-xs border border-forest rounded-full px-2 py-1 bg-transparent text-forest-dark shrink-0" style="color-scheme: dark;">
         </div>
         <div class="border border-gray-200 rounded-xl p-3 mb-5">
           <button onclick="toggleExamBoardInfoPanel()" class="w-full flex items-center justify-between text-left">
@@ -519,7 +520,10 @@ service cloud.firestore {
           </button>
           <div id="examBoardSchedulePanel" class="hidden mt-3">
             <p class="text-xs text-gray-400 mb-3">여러 날짜의 과목을 미리 저장해두면, 위 날짜 칸을 그 날짜로 바꾸거나 "다음날 →"을 누를 때 자동으로 불러와요. 매일 다시 입력할 필요가 없어요.</p>
-            <input id="examBoardSchedDateInput" onkeydown="examBoardCommitScheduleOnCtrlEnter(event)" placeholder="예: 2026년 10월 20일 화요일" class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm mb-2">
+            <div class="flex items-center gap-2 mb-2">
+              <input id="examBoardSchedDateInput" onkeydown="examBoardCommitScheduleOnCtrlEnter(event)" placeholder="예: 2026년 10월 20일 화요일" class="flex-1 border border-gray-300 rounded-lg px-2 py-1.5 text-sm">
+              <input type="date" id="examBoardSchedDatePicker" onchange="examBoardPickDate('examBoardSchedDateInput', this.value)" title="달력에서 날짜 고르기" class="text-sm border border-gray-300 rounded-lg px-2 py-1.5 bg-transparent shrink-0" style="color-scheme: dark;">
+            </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-2">
               <div class="space-y-1.5">
                 <p id="examBoardSchedGroupName0" class="text-xs font-semibold text-gray-500">1조</p>
@@ -8349,6 +8353,19 @@ function examBoardNormalizeDate(dateStr){
   const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
   const dow = ['일','월','화','수','목','금','토'][d.getDay()];
   return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 ${dow}요일`;
+}
+// 날짜 입력칸 옆 달력 아이콘에서 쓴다. 네이티브 달력에서 고른 "YYYY-MM-DD" 값을
+// "YYYY년 M월 D일 요일" 형식으로 바꿔서 그 텍스트 칸에 넣는다(직접 타이핑하는 것과 동일).
+function examBoardPickDate(targetFieldId, isoDate){
+  if (!isoDate) return;
+  const [y, m, d] = isoDate.split('-').map(Number);
+  const dow = ['일','월','화','수','목','금','토'][new Date(y, m - 1, d).getDay()];
+  const field = document.getElementById(targetFieldId);
+  field.value = `${y}년 ${m}월 ${d}일 ${dow}요일`;
+  if (targetFieldId === 'examBoardDateField') {
+    examBoardApplyScheduleForDate();
+    saveExamBoard();
+  }
 }
 // "YYYY년 M월 D일 ○요일" 문자열을 읽어서 다음 평일 같은 형식의 문자열로 돌려준다
 // (시험은 보통 주말을 건너뛰어서 토·일요일은 넘긴다). 형식이 안 맞으면 null.
