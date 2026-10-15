@@ -1824,7 +1824,7 @@ service cloud.firestore {
     <h1 id="examBoardFsTitle" class="font-display text-2xl md:text-5xl text-forest-dark mb-3">시험 결시현황판</h1>
     <p id="examBoardFsDate" class="text-lg md:text-2xl text-gray-500 mb-2"></p>
     <p id="examBoardFsNotice" class="text-sm md:text-base text-gray-500 mb-3"></p>
-    <div id="examBoardFsTrackLegend" class="flex flex-wrap justify-center gap-2 mb-8 text-xs md:text-sm"></div>
+    <div id="examBoardFsTrackLegend" class="flex flex-wrap justify-center gap-3 mb-8 text-lg md:text-2xl"></div>
     <div class="grid grid-cols-1 md:grid-cols-[0.8fr_1.3fr_1.3fr_0.8fr] gap-5 text-left items-stretch">
       <div class="bg-brick-light rounded-2xl p-6 flex flex-col items-center justify-center text-center gap-2">
         <div class="text-5xl md:text-6xl">👀🚫</div>
@@ -8339,6 +8339,17 @@ function examBoardCommitOnCtrlEnter(event){
   if (next) { next.focus(); next.select(); }
   else { event.target.blur(); }
 }
+// 날짜 문자열에서 연·월·일 숫자만 읽어서 "YYYY년 M월 D일 ○요일" 정식 형태로 돌려준다.
+// 요일을 안 썼거나 잘못 썼어도 실제 날짜로 요일을 다시 계산해서 채워 넣는다 — 메인 보드
+// 날짜 칸과 "요일별 과목 미리 입력" 칸에 똑같은 날짜를 서로 다른 형식으로(요일 있음/없음 등)
+// 입력하면 글자가 정확히 안 맞아서 자동 불러오기가 조용히 실패하는 문제가 있었다.
+function examBoardNormalizeDate(dateStr){
+  const m = (dateStr || '').trim().match(/(\d{4})\s*년\s*(\d{1,2})\s*월\s*(\d{1,2})\s*일/);
+  if (!m) return null;
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  const dow = ['일','월','화','수','목','금','토'][d.getDay()];
+  return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 ${dow}요일`;
+}
 // "YYYY년 M월 D일 ○요일" 문자열을 읽어서 다음 평일 같은 형식의 문자열로 돌려준다
 // (시험은 보통 주말을 건너뛰어서 토·일요일은 넘긴다). 형식이 안 맞으면 null.
 function examBoardNextWeekdayStr(dateStr){
@@ -8349,11 +8360,13 @@ function examBoardNextWeekdayStr(dateStr){
   const dow = ['일','월','화','수','목','금','토'][d.getDay()];
   return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 ${dow}요일`;
 }
-// 지금 날짜 칸의 값으로 "요일별 시험 과목 미리 입력"에 저장해둔 과목이 있는지 찾아서,
-// 있으면 그 날짜의 1~3교시 칸에 채워 넣는다(없으면 그대로 둔다 — 수동 입력으로 쓰면 된다).
+// 메인 보드 날짜 칸 값을 정식 형태로 보정하고(요일 자동 완성), 그 날짜로 미리 입력해둔
+// 과목이 있으면 1~3교시 칸에 채워 넣는다(없으면 그대로 둔다 — 수동 입력으로 쓰면 된다).
 function examBoardApplyScheduleForDate(){
-  const dateVal = document.getElementById('examBoardDateField').value.trim();
-  const entry = ((examBoardCache && examBoardCache.schedule) || {})[dateVal];
+  const field = document.getElementById('examBoardDateField');
+  const normalized = examBoardNormalizeDate(field.value);
+  if (normalized) field.value = normalized;
+  const entry = ((examBoardCache && examBoardCache.schedule) || {})[field.value.trim()];
   if (!entry) return;
   [0, 1].forEach(i => {
     document.getElementById('examBoardSubject1_' + i).value = entry['subject1_' + i] || '';
@@ -8433,7 +8446,7 @@ function renderExamBoardTimeLabels(){
   const legendEl = document.getElementById('examBoardFsTrackLegend');
   if (legendEl) {
     const shown = legend.filter(t => t.name || t.num);
-    legendEl.innerHTML = shown.map(t => `<span class="bg-card border border-gray-200 rounded-full px-3 py-1 text-gray-300">${escapeHtml(t.name)} = ${escapeHtml(t.num)}</span>`).join('');
+    legendEl.innerHTML = shown.map(t => `<span class="bg-card border border-forest rounded-full px-4 py-1.5 font-bold text-forest-dark">${escapeHtml(t.name)} = ${escapeHtml(t.num)}</span>`).join('');
   }
 }
 // "요일별 시험 과목 미리 입력" 접기/펼치기
@@ -8469,8 +8482,10 @@ function examBoardCommitScheduleOnCtrlEnter(event){
 // 미리 입력 칸의 날짜·과목을 schedule 맵에 저장하고, 바로 이어서 다음 평일을 입력할 수 있게
 // 날짜 칸을 다음 날짜로 미리 채워주고 과목 칸은 비운다(월요일 넣고 → 화요일 넣고 → ... 흐름).
 function saveExamBoardScheduleDay(){
-  const dateVal = document.getElementById('examBoardSchedDateInput').value.trim();
+  const rawDate = document.getElementById('examBoardSchedDateInput').value.trim();
+  const dateVal = examBoardNormalizeDate(rawDate);
   if (!dateVal) { alert('먼저 날짜를 "2026년 10월 20일 화요일"처럼 입력해주세요.'); return; }
+  document.getElementById('examBoardSchedDateInput').value = dateVal;
   const entry = {};
   [0, 1].forEach(i => {
     entry['subject1_' + i] = document.getElementById('examBoardSchedSubject1_' + i).value.trim();
@@ -8486,7 +8501,7 @@ function saveExamBoardScheduleDay(){
   renderExamBoardScheduleList();
   // 지금 메인 날짜 칸이 방금 저장한 날짜와 같다면, 날짜 칸을 따로 바꾸지 않아도
   // 바로 그 자리에서 과목이 반영되게 한다(안 그러면 날짜가 안 바뀌어서 자동 불러오기가 안 걸린다).
-  if (document.getElementById('examBoardDateField').value.trim() === dateVal) {
+  if (examBoardNormalizeDate(document.getElementById('examBoardDateField').value) === dateVal) {
     examBoardApplyScheduleForDate();
     saveExamBoard();
   }
