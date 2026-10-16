@@ -37,7 +37,7 @@ service cloud.firestore {
     // 제한 없이 열어두되 쓸 수 있는 필드는 제한한다 (ClassManager 원본과 동일한 구조).
     match /classes/{classId}/examBoard/{doc} {
       allow read: if true;
-      allow write: if request.resource.data.keys().hasOnly(['title', 'date', 'groups', 'schedule', 'timeTable', 'trackLegend']);
+      allow write: if request.resource.data.keys().hasOnly(['title', 'date', 'groups', 'schedule', 'timeTable', 'trackLegend', 'passwordHash']);
     }
     match /classes/{classId}/stats/{doc}          { allow read: if true; allow write: if true; }
     match /classes/{classId}/visitLog/{doc}       { allow read, write: if true; }

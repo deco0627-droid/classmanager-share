@@ -488,7 +488,12 @@ service cloud.firestore {
             <span id="examBoardInfoChevron" class="text-gray-400">▶</span>
           </button>
           <div id="examBoardInfoPanel" class="hidden mt-3">
-            <p class="text-xs text-gray-400 mb-3">시험 기간 내내 똑같이 쓰이는 내용이라 "다음날"을 눌러도 안 지워져요.</p>
+            <div class="flex items-center gap-2 mb-3 pb-3 border-b border-gray-200">
+              <label class="text-xs font-semibold text-gray-500 shrink-0">🔒 비밀번호 변경</label>
+              <input id="examBoardPasswordField" type="password" inputmode="numeric" maxlength="4" placeholder="새 비밀번호 숫자 4자리" class="flex-1 border border-gray-300 rounded-lg px-2 py-1.5 text-sm">
+              <button onclick="saveExamBoardPassword()" class="bg-forest text-white text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-forest-dark shrink-0">변경</button>
+            </div>
+            <p class="text-xs text-gray-400 mb-3">시험 기간 내내 똑같이 쓰이는 내용이라 "다음날"을 눌러도 안 지워져요. 처음 비밀번호는 0000이에요.</p>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-2 mb-2">
               <div>
                 <label class="text-xs font-semibold text-gray-500 block mb-1">1교시 시간</label>
@@ -8424,11 +8429,50 @@ function examBoardPrevDay(){
   examBoardClearDailyFieldsAndApply();
 }
 // 평소엔 접어두고, 제목 버튼을 누르면 입력칸이 펼쳐진다(시험이 매일 있는 게 아니라서).
+// 로그인 없이도 누구나 열 수 있는 게시판이다 보니, 지나가다 아무나 숫자를 바꿔버리는 걸
+// 막기 위해 숫자 4자리 정도의 가벼운 비밀번호를 건다(건강/상담 비밀번호와 똑같은 방식) —
+// 한 번 맞히면 이 기기(localStorage)에 기억해서 다음부터는 다시 안 물어보고, 처음 쓰는
+// 기기·브라우저라면 다시 물어본다. 닫을 때는 물어보지 않는다.
+async function getExamBoardPasswordHash(){
+  return (examBoardCache && examBoardCache.passwordHash) || await getDefaultPwHash('0000');
+}
+const EXAM_BOARD_PW_STORAGE_KEY = 'cm_examBoardPwUnlocked';
+function isExamBoardUnlocked(){
+  return localStorage.getItem(EXAM_BOARD_PW_STORAGE_KEY) === '1';
+}
+function requireExamBoardPassword(onSuccess){
+  if (isExamBoardUnlocked()) { onSuccess(); return; }
+  openPasswordPrompt('시험 결시현황판 비밀번호를 입력하세요 (기본 0000).', async (input) => {
+    if (!input) return;
+    const [expected, actual] = await Promise.all([getExamBoardPasswordHash(), sha256Hex(input.trim())]);
+    if (actual !== expected) { alert('비밀번호가 올바르지 않습니다.'); return; }
+    localStorage.setItem(EXAM_BOARD_PW_STORAGE_KEY, '1');
+    onSuccess();
+  });
+}
+async function saveExamBoardPassword(){
+  const value = document.getElementById('examBoardPasswordField').value.trim();
+  if (!/^\d{4}$/.test(value)) { alert('숫자 4자리로 입력해주세요.'); return; }
+  const hash = await sha256Hex(value);
+  examBoardCache = examBoardCache || {};
+  examBoardCache.passwordHash = hash;
+  document.getElementById('examBoardPasswordField').value = '';
+  classCol('examBoard').doc('current').set({ passwordHash: hash }, { merge: true })
+    .then(() => alert('비밀번호가 변경되었습니다.'))
+    .catch(err => alert('저장에 실패했어요: ' + err.message));
+}
 function toggleExamBoardPanel(){
   const panel = document.getElementById('examBoardPanel');
   const willOpen = panel.classList.contains('hidden');
-  panel.classList.toggle('hidden', !willOpen);
-  document.getElementById('examBoardToggleChevron').textContent = willOpen ? '▼' : '▶';
+  if (willOpen) {
+    requireExamBoardPassword(() => {
+      panel.classList.remove('hidden');
+      document.getElementById('examBoardToggleChevron').textContent = '▼';
+    });
+    return;
+  }
+  panel.classList.add('hidden');
+  document.getElementById('examBoardToggleChevron').textContent = '▶';
 }
 // "시험 시간표 · 계열 구분 번호" 접기/펼치기
 function toggleExamBoardInfoPanel(){
