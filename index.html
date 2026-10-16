@@ -8474,10 +8474,18 @@ function toggleExamBoardPanel(){
   panel.classList.add('hidden');
   document.getElementById('examBoardToggleChevron').textContent = '▶';
 }
-// "시험 시간표 · 계열 구분 번호" 접기/펼치기
+// "시험 시간표 · 계열 구분 번호" 접기/펼치기 — 비밀번호 변경 칸이 들어있는 곳이라, 보드
+// 비밀번호를 아는 사람이라도 실수로 한 번에 안 열리게 5번 눌러야 열리게 한다(건강 비밀번호
+// 설정 칸을 3번 눌러야 열리는 것과 같은 방식). 닫을 때는 그냥 한 번에 닫힌다.
+let examBoardInfoUnlockCount = 0;
 function toggleExamBoardInfoPanel(){
   const panel = document.getElementById('examBoardInfoPanel');
   const willOpen = panel.classList.contains('hidden');
+  if (willOpen) {
+    examBoardInfoUnlockCount += 1;
+    if (examBoardInfoUnlockCount < 5) return;
+    examBoardInfoUnlockCount = 0;
+  }
   panel.classList.toggle('hidden', !willOpen);
   document.getElementById('examBoardInfoChevron').textContent = willOpen ? '▼' : '▶';
 }
