@@ -560,6 +560,13 @@ service cloud.firestore {
                 <div class="flex items-center gap-1.5"><input id="examBoardTotal0" onchange="saveExamBoard()" onkeydown="examBoardCommitOnCtrlEnter(event)" type="number" inputmode="numeric" class="w-20 text-right text-xl font-bold border border-gray-300 rounded-lg px-2 py-1.5"><span class="text-gray-500">명</span></div>
               </div>
               <div class="flex items-center justify-between gap-2">
+                <label class="text-base font-semibold text-gray-600 shrink-0">번호</label>
+                <div class="relative w-28">
+                  <input id="examBoardNumRange0" onchange="saveExamBoard()" onkeydown="examBoardCommitOnCtrlEnter(event)" placeholder="예: 1~10번" class="peer w-full text-right border border-gray-300 rounded-lg px-2 py-1.5 text-base">
+                  <div class="hidden peer-focus:block absolute right-0 top-full mt-1 z-20 bg-ink text-white text-xs font-semibold px-3 py-1.5 rounded-lg shadow-lg whitespace-nowrap pointer-events-none">이 방에서 시험 보는 학생 번호, 예: 1~10번</div>
+                </div>
+              </div>
+              <div class="flex items-center justify-between gap-2">
                 <label class="text-base font-semibold text-gray-600 shrink-0">응시</label>
                 <div class="flex items-center gap-1.5"><input id="examBoardTaken0" onchange="saveExamBoard()" onkeydown="examBoardCommitOnCtrlEnter(event)" type="number" inputmode="numeric" class="w-20 text-right text-xl font-bold border border-gray-300 rounded-lg px-2 py-1.5"><span class="text-gray-500">명</span></div>
               </div>
@@ -608,6 +615,13 @@ service cloud.firestore {
               <div class="flex items-center justify-between gap-2">
                 <label class="text-base font-semibold text-gray-600 shrink-0">총원</label>
                 <div class="flex items-center gap-1.5"><input id="examBoardTotal1" onchange="saveExamBoard()" onkeydown="examBoardCommitOnCtrlEnter(event)" type="number" inputmode="numeric" class="w-20 text-right text-xl font-bold border border-gray-300 rounded-lg px-2 py-1.5"><span class="text-gray-500">명</span></div>
+              </div>
+              <div class="flex items-center justify-between gap-2">
+                <label class="text-base font-semibold text-gray-600 shrink-0">번호</label>
+                <div class="relative w-28">
+                  <input id="examBoardNumRange1" onchange="saveExamBoard()" onkeydown="examBoardCommitOnCtrlEnter(event)" placeholder="예: 11~20번" class="peer w-full text-right border border-gray-300 rounded-lg px-2 py-1.5 text-base">
+                  <div class="hidden peer-focus:block absolute right-0 top-full mt-1 z-20 bg-ink text-white text-xs font-semibold px-3 py-1.5 rounded-lg shadow-lg whitespace-nowrap pointer-events-none">이 방에서 시험 보는 학생 번호, 예: 11~20번</div>
+                </div>
               </div>
               <div class="flex items-center justify-between gap-2">
                 <label class="text-base font-semibold text-gray-600 shrink-0">응시</label>
@@ -1844,6 +1858,7 @@ service cloud.firestore {
         <h2 id="examBoardFsLabel0" class="font-display text-xl md:text-3xl text-forest-dark text-center mb-6">-</h2>
         <div class="space-y-4 text-lg md:text-2xl">
           <div class="flex justify-between items-baseline"><span class="font-semibold text-gray-600">총원</span><span><b id="examBoardFsTotal0">-</b>명</span></div>
+          <div id="examBoardFsNumRangeRow0" class="hidden flex justify-between items-baseline"><span class="font-semibold text-gray-600">번호</span><span id="examBoardFsNumRange0">-</span></div>
           <div class="flex justify-between items-baseline"><span class="font-semibold text-gray-600">응시</span><span><b id="examBoardFsTaken0">-</b>명</span></div>
           <div class="flex justify-between items-baseline"><span class="font-semibold text-gray-600">결시</span><span><b id="examBoardFsAbsent0">-</b>명</span></div>
           <div class="flex justify-between items-baseline gap-3"><span class="font-semibold text-gray-600 shrink-0">결번</span><span id="examBoardFsAbsentNumbers0" class="text-right break-words">-</span></div>
@@ -1858,6 +1873,7 @@ service cloud.firestore {
         <h2 id="examBoardFsLabel1" class="font-display text-xl md:text-3xl text-forest-dark text-center mb-6">-</h2>
         <div class="space-y-4 text-lg md:text-2xl">
           <div class="flex justify-between items-baseline"><span class="font-semibold text-gray-600">총원</span><span><b id="examBoardFsTotal1">-</b>명</span></div>
+          <div id="examBoardFsNumRangeRow1" class="hidden flex justify-between items-baseline"><span class="font-semibold text-gray-600">번호</span><span id="examBoardFsNumRange1">-</span></div>
           <div class="flex justify-between items-baseline"><span class="font-semibold text-gray-600">응시</span><span><b id="examBoardFsTaken1">-</b>명</span></div>
           <div class="flex justify-between items-baseline"><span class="font-semibold text-gray-600">결시</span><span><b id="examBoardFsAbsent1">-</b>명</span></div>
           <div class="flex justify-between items-baseline gap-3"><span class="font-semibold text-gray-600 shrink-0">결번</span><span id="examBoardFsAbsentNumbers1" class="text-right break-words">-</span></div>
@@ -8286,6 +8302,7 @@ function renderExamBoard(){
   groups.forEach((g, i) => {
     setVal('examBoardGroupLabel' + i, g.label);
     setVal('examBoardTotal' + i, g.total);
+    setVal('examBoardNumRange' + i, g.numRange);
     setVal('examBoardTaken' + i, g.taken);
     setVal('examBoardAbsent' + i, g.absent);
     setVal('examBoardAbsentNumbers' + i, g.absentNumbers);
@@ -8310,6 +8327,7 @@ function saveExamBoard(){
   const groups = [0, 1].map(i => ({
     label: document.getElementById('examBoardGroupLabel' + i).value.trim(),
     total: document.getElementById('examBoardTotal' + i).value.trim(),
+    numRange: document.getElementById('examBoardNumRange' + i).value.trim(),
     taken: document.getElementById('examBoardTaken' + i).value.trim(),
     absent: document.getElementById('examBoardAbsent' + i).value.trim(),
     absentNumbers: document.getElementById('examBoardAbsentNumbers' + i).value.trim(),
@@ -8338,8 +8356,10 @@ function saveExamBoard(){
 // 묶어서 "이 칸 입력 끝, 다음 칸으로" 의도가 분명할 때만 저장하고 다음 칸에 포커스를 준다.
 const EXAM_BOARD_FIELD_ORDER = [
   'examBoardTitleField', 'examBoardDateField',
-  'examBoardGroupLabel0', 'examBoardTotal0', 'examBoardTaken0', 'examBoardAbsent0', 'examBoardAbsentNumbers0', 'examBoardSubject1_0', 'examBoardSubject2_0', 'examBoardSubject3_0',
-  'examBoardGroupLabel1', 'examBoardTotal1', 'examBoardTaken1', 'examBoardAbsent1', 'examBoardAbsentNumbers1', 'examBoardSubject1_1', 'examBoardSubject2_1', 'examBoardSubject3_1',
+  'examBoardGroupLabel0', 'examBoardTotal0', 'examBoardNumRange0', 'examBoardTaken0', 'examBoardAbsent0', 'examBoardAbsentNumbers0',
+  'examBoardSubject1_0', 'examBoardSubject2_0', 'examBoardSubject3_0',
+  'examBoardGroupLabel1', 'examBoardTotal1', 'examBoardNumRange1', 'examBoardTaken1', 'examBoardAbsent1', 'examBoardAbsentNumbers1',
+  'examBoardSubject1_1', 'examBoardSubject2_1', 'examBoardSubject3_1',
 ];
 function examBoardCommitOnCtrlEnter(event){
   if (event.key !== 'Enter' || !(event.ctrlKey || event.metaKey)) return;
@@ -8400,8 +8420,8 @@ function examBoardApplyScheduleForDate(){
     document.getElementById('examBoardSubject3_' + i).value = entry['subject3_' + i] || '';
   });
 }
-// 그날의 총원은 보통 그대로지만 응시·결시·결번·과목은 날마다 달라지니 비우고, 그 날짜로
-// 미리 입력해둔 과목이 있으면 바로 다시 채워 넣는다. 이전날/다음날 버튼이 공통으로 쓴다.
+// 그날의 총원·번호는 보통 그대로지만 응시·결시·결번·과목은 날마다 달라지니 비우고, 그
+// 날짜로 미리 입력해둔 과목이 있으면 바로 다시 채워 넣는다. 이전날/다음날 버튼이 공통으로 쓴다.
 function examBoardClearDailyFieldsAndApply(){
   [0, 1].forEach(i => {
     document.getElementById('examBoardTaken' + i).value = '';
@@ -8630,6 +8650,8 @@ function openExamBoardFullscreen(){
   groups.forEach((g, i) => {
     document.getElementById('examBoardFsLabel' + i).textContent = g.label || ('그룹 ' + (i + 1));
     document.getElementById('examBoardFsTotal' + i).textContent = g.total || '-';
+    document.getElementById('examBoardFsNumRange' + i).textContent = g.numRange || '-';
+    document.getElementById('examBoardFsNumRangeRow' + i).classList.toggle('hidden', !g.numRange);
     document.getElementById('examBoardFsTaken' + i).textContent = g.taken || '-';
     document.getElementById('examBoardFsAbsent' + i).textContent = g.absent || '-';
     document.getElementById('examBoardFsAbsentNumbers' + i).textContent = g.absentNumbers || '-';
