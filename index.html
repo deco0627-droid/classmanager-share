@@ -560,7 +560,7 @@ service cloud.firestore {
                 <div class="flex items-center gap-1.5"><input id="examBoardTotal0" onchange="saveExamBoard()" onkeydown="examBoardCommitOnCtrlEnter(event)" type="number" inputmode="numeric" class="w-20 text-right text-xl font-bold border border-gray-300 rounded-lg px-2 py-1.5"><span class="text-gray-500">명</span></div>
               </div>
               <div class="flex items-center justify-between gap-2">
-                <label class="text-base font-semibold text-gray-600 shrink-0">번호</label>
+                <label class="text-base font-semibold text-gray-600 shrink-0">응시번호</label>
                 <div class="relative w-28">
                   <input id="examBoardNumRange0" onchange="saveExamBoard()" onkeydown="examBoardCommitOnCtrlEnter(event)" placeholder="예: 1~10번" class="peer w-full text-right border border-gray-300 rounded-lg px-2 py-1.5 text-base">
                   <div class="hidden peer-focus:block absolute right-0 top-full mt-1 z-20 bg-ink text-white text-xs font-semibold px-3 py-1.5 rounded-lg shadow-lg whitespace-nowrap pointer-events-none">이 방에서 시험 보는 학생 번호, 예: 1~10번</div>
@@ -617,7 +617,7 @@ service cloud.firestore {
                 <div class="flex items-center gap-1.5"><input id="examBoardTotal1" onchange="saveExamBoard()" onkeydown="examBoardCommitOnCtrlEnter(event)" type="number" inputmode="numeric" class="w-20 text-right text-xl font-bold border border-gray-300 rounded-lg px-2 py-1.5"><span class="text-gray-500">명</span></div>
               </div>
               <div class="flex items-center justify-between gap-2">
-                <label class="text-base font-semibold text-gray-600 shrink-0">번호</label>
+                <label class="text-base font-semibold text-gray-600 shrink-0">응시번호</label>
                 <div class="relative w-28">
                   <input id="examBoardNumRange1" onchange="saveExamBoard()" onkeydown="examBoardCommitOnCtrlEnter(event)" placeholder="예: 11~20번" class="peer w-full text-right border border-gray-300 rounded-lg px-2 py-1.5 text-base">
                   <div class="hidden peer-focus:block absolute right-0 top-full mt-1 z-20 bg-ink text-white text-xs font-semibold px-3 py-1.5 rounded-lg shadow-lg whitespace-nowrap pointer-events-none">이 방에서 시험 보는 학생 번호, 예: 11~20번</div>
@@ -1858,7 +1858,7 @@ service cloud.firestore {
         <h2 id="examBoardFsLabel0" class="font-display text-xl md:text-3xl text-forest-dark text-center mb-6">-</h2>
         <div class="space-y-4 text-lg md:text-2xl">
           <div class="flex justify-between items-baseline"><span class="font-semibold text-gray-600">총원</span><span><b id="examBoardFsTotal0">-</b>명</span></div>
-          <div id="examBoardFsNumRangeRow0" class="hidden flex justify-between items-baseline"><span class="font-semibold text-gray-600">번호</span><span id="examBoardFsNumRange0">-</span></div>
+          <div id="examBoardFsNumRangeRow0" class="hidden flex justify-between items-baseline"><span class="font-semibold text-gray-600">응시번호</span><span id="examBoardFsNumRange0">-</span></div>
           <div class="flex justify-between items-baseline"><span class="font-semibold text-gray-600">응시</span><span><b id="examBoardFsTaken0">-</b>명</span></div>
           <div class="flex justify-between items-baseline"><span class="font-semibold text-gray-600">결시</span><span><b id="examBoardFsAbsent0">-</b>명</span></div>
           <div class="flex justify-between items-baseline gap-3"><span class="font-semibold text-gray-600 shrink-0">결번</span><span id="examBoardFsAbsentNumbers0" class="text-right break-words">-</span></div>
@@ -1873,7 +1873,7 @@ service cloud.firestore {
         <h2 id="examBoardFsLabel1" class="font-display text-xl md:text-3xl text-forest-dark text-center mb-6">-</h2>
         <div class="space-y-4 text-lg md:text-2xl">
           <div class="flex justify-between items-baseline"><span class="font-semibold text-gray-600">총원</span><span><b id="examBoardFsTotal1">-</b>명</span></div>
-          <div id="examBoardFsNumRangeRow1" class="hidden flex justify-between items-baseline"><span class="font-semibold text-gray-600">번호</span><span id="examBoardFsNumRange1">-</span></div>
+          <div id="examBoardFsNumRangeRow1" class="hidden flex justify-between items-baseline"><span class="font-semibold text-gray-600">응시번호</span><span id="examBoardFsNumRange1">-</span></div>
           <div class="flex justify-between items-baseline"><span class="font-semibold text-gray-600">응시</span><span><b id="examBoardFsTaken1">-</b>명</span></div>
           <div class="flex justify-between items-baseline"><span class="font-semibold text-gray-600">결시</span><span><b id="examBoardFsAbsent1">-</b>명</span></div>
           <div class="flex justify-between items-baseline gap-3"><span class="font-semibold text-gray-600 shrink-0">결번</span><span id="examBoardFsAbsentNumbers1" class="text-right break-words">-</span></div>
