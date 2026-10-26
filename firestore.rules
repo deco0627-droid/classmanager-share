@@ -39,8 +39,19 @@ service cloud.firestore {
       allow read: if true;
       allow write: if request.resource.data.keys().hasOnly(['title', 'date', 'groups', 'schedule', 'timeTable', 'trackLegend', 'passwordHash']);
     }
-    match /classes/{classId}/stats/{doc}          { allow read: if true; allow write: if true; }
-    match /classes/{classId}/visitLog/{doc}       { allow read, write: if true; }
+    match /classes/{classId}/stats/{doc} {
+      allow read: if true;
+      allow create, update: if request.resource.data.keys().hasOnly(['total', 'dailyDate', 'dailyCount'])
+        && request.resource.data.total is number
+        && request.resource.data.dailyCount is number
+        && request.resource.data.dailyDate is string;
+    }
+    match /classes/{classId}/visitLog/{doc} {
+      allow read: if true;
+      allow create, update: if request.resource.data.keys().hasOnly(['lastVisit'])
+        && request.resource.data.lastVisit is number;
+      allow delete: if isClassTeacher(classId);
+    }
     match /classes/{classId}/wallPosts/{doc}      { allow read: if resource.data.isPrivate == false || isClassTeacher(classId); allow create: if request.auth != null && request.resource.data.authorEmail == request.auth.token.email; allow update, delete: if isClassTeacher(classId) || (request.auth != null && request.auth.token.email == resource.data.authorEmail); }
     match /classes/{classId}/attendance/{doc}     { allow read, create: if true; allow update, delete: if isClassTeacher(classId); }
     // 학생은 로그인 없이 쓰는 앱이라 "본인 토큰만" 같은 신원 기반 제한을 걸 수 없다 — create·update는
